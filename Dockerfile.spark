@@ -1,0 +1,33 @@
+FROM apache/spark-py:v3.3.1
+
+USER root
+
+ARG DELTA_VERSION=2.2.0
+ARG HADOOP_AWS_VERSION=3.3.2
+ARG AWS_SDK_BUNDLE_VERSION=1.11.1026
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL "https://repo1.maven.org/maven2/io/delta/delta-core_2.12/${DELTA_VERSION}/delta-core_2.12-${DELTA_VERSION}.jar" -o "/opt/spark/jars/delta-core_2.12-${DELTA_VERSION}.jar" \
+    && curl -fsSL "https://repo1.maven.org/maven2/io/delta/delta-storage/${DELTA_VERSION}/delta-storage-${DELTA_VERSION}.jar" -o "/opt/spark/jars/delta-storage-${DELTA_VERSION}.jar" \
+    && curl -fsSL "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_AWS_VERSION}/hadoop-aws-${HADOOP_AWS_VERSION}.jar" -o "/opt/spark/jars/hadoop-aws-${HADOOP_AWS_VERSION}.jar" \
+    && curl -fsSL "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_BUNDLE_VERSION}/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar" -o "/opt/spark/jars/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar"
+
+WORKDIR /opt/spark/work-dir
+
+COPY requirements-spark.txt /opt/spark/work-dir/requirements-spark.txt
+RUN pip install --no-cache-dir -r /opt/spark/work-dir/requirements-spark.txt
+
+COPY jobs/ /opt/spark/work-dir/jobs/
+COPY config/ /opt/spark/work-dir/config/
+COPY data/sample/ /opt/spark/work-dir/data/sample/
+
+ENV PYTHONPATH=/opt/spark/work-dir
+ENV SPARK_IMAGE_ROLE=PROCESSING
+
+LABEL org.opencontainers.image.title="Data Master Spark Jobs" \
+      org.opencontainers.image.description="Spark processing runtime with Delta Lake and S3A dependencies" \
+      io.data-master.image-role="processing"
+
+USER 185

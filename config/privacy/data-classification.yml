@@ -1,0 +1,151 @@
+version: 1
+scope: synthetic_banking_domain
+classification_levels:
+  direct_identifier:
+    description: Identifica diretamente uma pessoa natural simulada.
+  quasi_identifier:
+    description: Pode contribuir para reidentificacao quando combinado.
+  financial_sensitive:
+    description: Dado financeiro sensivel no contexto bancario sintetico.
+  masked_identifier:
+    description: Identificador mascarado/minimizado para consumo.
+  technical_identifier:
+    description: Identificador tecnico usado para lineage ou joins.
+  business_metadata:
+    description: Metadado de negocio sem identificacao direta.
+
+tables:
+  bronze.clientes:
+    layer: bronze
+    mapping_status: existing_source_registry
+    fields:
+      cliente_id: technical_identifier
+      cpf: direct_identifier
+      nome: direct_identifier
+      email: direct_identifier
+      telefone: direct_identifier
+      data_nascimento: quasi_identifier
+      endereco: quasi_identifier
+      estado: quasi_identifier
+      cidade: quasi_identifier
+      data_cadastro: business_metadata
+
+  bronze.cartoes:
+    layer: bronze
+    mapping_status: existing_source_registry
+    fields:
+      cartao_id: technical_identifier
+      conta_id: technical_identifier
+      numero_cartao: financial_sensitive
+      tipo_cartao: business_metadata
+      bandeira: business_metadata
+      data_emissao: business_metadata
+      data_expiracao: quasi_identifier
+      status: business_metadata
+
+  raw_vault.hub_cliente:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    fields:
+      hk_cliente: technical_identifier
+      cliente_id: technical_identifier
+
+  raw_vault.sat_cliente_dados_cadastrais:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      nome: direct_identifier
+      email: direct_identifier
+      telefone: direct_identifier
+      data_nascimento: quasi_identifier
+      endereco: quasi_identifier
+      estado: quasi_identifier
+      cidade: quasi_identifier
+
+  raw_vault.sat_cliente_documentos:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      cpf: direct_identifier
+      data_cadastro: business_metadata
+
+  raw_vault.sat_cartao_detalhes:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      conta_id: technical_identifier
+      numero_cartao: financial_sensitive
+      tipo_cartao: business_metadata
+      bandeira: business_metadata
+      data_emissao: business_metadata
+      data_expiracao: quasi_identifier
+      status: business_metadata
+
+  raw_vault.sat_conta_detalhes:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      cliente_id: technical_identifier
+      agencia_id: technical_identifier
+      produto_id: technical_identifier
+      tipo_conta: business_metadata
+      agencia: business_metadata
+      numero_conta: financial_sensitive
+      saldo: financial_sensitive
+      limite: financial_sensitive
+      data_abertura: quasi_identifier
+      status: business_metadata
+
+  raw_vault.sat_transacao_detalhes:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      conta_id: technical_identifier
+      cartao_id: technical_identifier
+      tipo_transacao: business_metadata
+      valor: financial_sensitive
+      data_transacao: quasi_identifier
+      data_liquidacao: quasi_identifier
+      status: business_metadata
+      descricao: business_metadata
+
+  raw_vault.sat_agencia_detalhes:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      numero_agencia: business_metadata
+      nome: business_metadata
+      estado: quasi_identifier
+      cidade: quasi_identifier
+      endereco: quasi_identifier
+      telefone: direct_identifier
+      gerente: direct_identifier
+      data_inauguracao: business_metadata
+
+  raw_vault.sat_evento_digital_detalhes:
+    layer: raw_vault
+    mapping_status: existing_raw_vault
+    pii_boundary: restricted_pii_satellite
+    fields:
+      canal: business_metadata
+      tipo_evento: business_metadata
+      resultado: business_metadata
+      detalhes: quasi_identifier
+
+  gold.gold_clientes_protegidos:
+    layer: gold
+    mapping_status: existing_gold
+    fields:
+      cliente_id_pseudonimizado: masked_identifier
+      nome_cliente: masked_identifier
+      cpf_mascarado: masked_identifier
+      email_mascarado: masked_identifier
+      telefone_mascarado: masked_identifier
+      estado: quasi_identifier
+      cidade: quasi_identifier

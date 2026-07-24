@@ -1,0 +1,101 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: dm-spark-integration-__BATCH_ID__
+  namespace: data-platform
+  labels:
+    app.kubernetes.io/part-of: data-master-platform
+    data-master.io/runtime-profile: minikube-integration
+    data-master.io/stage: integration
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: __SPARK_IMAGE__
+  imagePullPolicy: IfNotPresent
+  mainApplicationFile: local:///opt/spark/work-dir/jobs/kubernetes/run_pipeline_stage.py
+  arguments:
+    - --stage
+    - integration
+    - --runtime-profile
+    - minikube-integration
+    - --batch-id
+    - "__BATCH_ID__"
+    - --sample-data-path
+    - /opt/spark/work-dir/data/sample
+    - --bronze-path
+    - s3a://lakehouse/bronze
+    - --raw-vault-path
+    - s3a://lakehouse/raw_vault
+    - --gold-path
+    - s3a://lakehouse/gold
+    - --monitoring-path
+    - s3a://lakehouse/monitoring
+  sparkVersion: "3.3.1"
+  timeToLiveSeconds: 900
+  restartPolicy:
+    type: OnFailure
+    onFailureRetries: 1
+    onFailureRetryInterval: 10
+    onSubmissionFailureRetries: 2
+    onSubmissionFailureRetryInterval: 20
+  sparkConf:
+    spark.sql.extensions: io.delta.sql.DeltaSparkSessionExtension
+    spark.sql.catalog.spark_catalog: org.apache.spark.sql.delta.catalog.DeltaCatalog
+    spark.databricks.delta.schema.autoMerge.enabled: "true"
+    spark.hadoop.fs.s3a.endpoint: http://minio.data-platform.svc.cluster.local:9000
+    spark.hadoop.fs.s3a.path.style.access: "true"
+    spark.hadoop.fs.s3a.connection.ssl.enabled: "false"
+    spark.hadoop.fs.s3a.impl: org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.hadoop.fs.s3a.aws.credentials.provider: com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+    spark.dynamicAllocation.enabled: "false"
+    spark.kubernetes.executor.deleteOnTermination: "false"
+    spark.driver.extraJavaOptions: -XX:-UseContainerSupport
+    spark.executor.extraJavaOptions: -XX:-UseContainerSupport
+    spark.sql.shuffle.partitions: "2"
+    spark.databricks.delta.snapshotPartitions: "2"
+  driver:
+    cores: 1
+    coreLimit: 1000m
+    memory: 768m
+    memoryOverhead: 256m
+    serviceAccount: spark
+    labels:
+      data-master.io/spark-role: driver
+    env: &runtime-env
+      - name: RUNTIME_PROFILE
+        value: minikube-integration
+      - name: DM_RUNTIME_PROFILE
+        value: minikube-integration
+      - name: SPARK_JARS_PACKAGES
+        value: ""
+      - name: MINIO_ENDPOINT
+        value: http://minio.data-platform.svc.cluster.local:9000
+      - name: MINIO_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: data-master-minio-secret
+            key: MINIO_ACCESS_KEY
+      - name: MINIO_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: data-master-minio-secret
+            key: MINIO_SECRET_KEY
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: data-master-minio-secret
+            key: MINIO_ACCESS_KEY
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: data-master-minio-secret
+            key: MINIO_SECRET_KEY
+  executor:
+    cores: 1
+    instances: 1
+    memory: 768m
+    memoryOverhead: 256m
+    labels:
+      data-master.io/spark-role: executor
+    env: *runtime-env

@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "minio.fullname" . }}-init-buckets
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/name: {{ include "minio.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init-buckets
+          image: "{{ .Values.clientImage.repository }}:{{ .Values.clientImage.tag }}"
+          imagePullPolicy: {{ .Values.clientImage.pullPolicy }}
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecretName }}
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecretName }}
+                  key: MINIO_SECRET_KEY
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" --api S3v4
+              mc mb --ignore-existing local/lakehouse
+              mc mb --ignore-existing local/bronze
+              mc mb --ignore-existing local/silver
+              mc mb --ignore-existing local/gold
+              mc mb --ignore-existing local/warehouse
+      serviceAccountName: {{ include "minio.serviceAccountName" . }}
+  backoffLimit: 3

@@ -1,0 +1,23 @@
+nameOverride: hive-metastore
+fullnameOverride: hive-metastore
+
+image:
+  repository: bde2020/hive
+  tag: 2.3.2-postgresql-metastore
+  pullPolicy: IfNotPresent
+
+postgresHost: postgres-metastore
+postgresPort: 5432
+credentialsSecretName: data-master-postgres-secret
+
+service:
+  type: ClusterIP
+  port: 9083
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 200m
+  limits:
+    memory: 1Gi
+    cpu: 500m

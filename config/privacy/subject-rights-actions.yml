@@ -1,0 +1,79 @@
+version: 1
+scope: synthetic_banking_domain
+
+subject_identifier:
+  canonical_subject_id: subject_id
+  current_demo_mapping:
+    customer_hub: raw_vault.hub_cliente
+    customer_hash_key: hk_cliente
+    source_business_key: cliente_id
+  note: subject_id is planned for Privacy Control Plane. Current bridge uses hk_cliente/cliente_id in synthetic data.
+
+actions:
+  raw_vault.sat_cliente_documentos:
+    subject_key: hk_cliente
+    pii_boundary: restricted_pii_satellite
+    fields:
+      cpf:
+        classification: direct_identifier
+        action_on_erasure_request: anonymize
+      data_cadastro:
+        classification: business_metadata
+        action_on_erasure_request: retain
+
+  raw_vault.sat_cliente_dados_cadastrais:
+    subject_key: hk_cliente
+    pii_boundary: restricted_pii_satellite
+    fields:
+      nome:
+        classification: direct_identifier
+        action_on_erasure_request: anonymize
+      email:
+        classification: direct_identifier
+        action_on_erasure_request: anonymize
+      telefone:
+        classification: direct_identifier
+        action_on_erasure_request: anonymize
+      endereco:
+        classification: quasi_identifier
+        action_on_erasure_request: anonymize
+      data_nascimento:
+        classification: quasi_identifier
+        action_on_erasure_request: anonymize_or_generalize
+      estado:
+        classification: quasi_identifier
+        action_on_erasure_request: retain_or_generalize
+      cidade:
+        classification: quasi_identifier
+        action_on_erasure_request: retain_or_generalize
+
+  raw_vault.sat_cartao_detalhes:
+    subject_key: planned_bridge_via_conta_cliente
+    pii_boundary: restricted_pii_satellite
+    fields:
+      numero_cartao:
+        classification: financial_sensitive
+        action_on_erasure_request: anonymize_or_block
+      conta_id:
+        classification: technical_identifier
+        action_on_erasure_request: retain_if_needed_for_lineage
+
+  gold.gold_clientes_protegidos:
+    subject_key: cliente_id_pseudonimizado
+    action_on_erasure_request: delete_or_refresh_gold
+    fields:
+      cliente_id_pseudonimizado:
+        classification: masked_identifier
+        action_on_erasure_request: delete_or_refresh_gold
+      nome_cliente:
+        classification: masked_identifier
+        action_on_erasure_request: masked_or_minimized_in_gold
+      cpf_mascarado:
+        classification: masked_identifier
+        action_on_erasure_request: masked_or_minimized_in_gold
+      email_mascarado:
+        classification: masked_identifier
+        action_on_erasure_request: masked_or_minimized_in_gold
+      telefone_mascarado:
+        classification: masked_identifier
+        action_on_erasure_request: masked_or_minimized_in_gold

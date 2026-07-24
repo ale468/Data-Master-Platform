@@ -1,0 +1,27 @@
+nameOverride: postgres-metastore
+fullnameOverride: postgres-metastore
+
+image:
+  repository: postgres
+  tag: "15"
+  pullPolicy: IfNotPresent
+
+credentialsSecretName: data-master-postgres-secret
+
+service:
+  type: ClusterIP
+  port: 5432
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: "standard"
+  accessMode: ReadWriteOnce
+
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 100m
+  limits:
+    memory: 512Mi
+    cpu: 200m

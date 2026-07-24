@@ -1,0 +1,21 @@
+agencia_id,numero_agencia,nome,estado,cidade,endereco,telefone,gerente,data_inauguracao
+AG_0001,1829,Agência Santos,PR,Araraquara,"Avenida Principal, 4167",+55 (31) 95364-6123,Ana Oliveira,2020-10-15
+AG_0002,9433,Agência Araraquara,SC,Santos,"Avenida Principal, 8248",+55 (13) 91475-7442,Ricardo Alves,2023-09-04
+AG_0003,4524,Agência Santos,SP,São Paulo,"Avenida Principal, 4709",+55 (74) 99789-8710,Carlos Ribeiro,2026-04-14
+AG_0004,2761,Agência Araraquara,MG,Santos,"Avenida Principal, 6092",+55 (62) 95995-1741,Lucas Silva,2019-12-25
+AG_0005,4189,Agência Santos,BA,São Paulo,"Avenida Principal, 6429",+55 (75) 97378-5582,Juliana Rodrigues,2019-07-11
+AG_0006,2946,Agência Campinas,RJ,Araraquara,"Avenida Principal, 6214",+55 (54) 99139-6990,Pedro Pereira,2019-08-15
+AG_0007,9341,Agência Araraquara,SP,São Paulo,"Avenida Principal, 737",+55 (28) 95456-8761,Ricardo Alves,2024-09-14
+AG_0008,9446,Agência Campinas,PE,Santos,"Avenida Principal, 2762",+55 (61) 94902-6511,Ricardo Ribeiro,2020-05-28
+AG_0009,9025,Agência Santos,SC,São Paulo,"Avenida Principal, 6135",+55 (53) 91795-7824,Juliana Costa,2017-06-10
+AG_0010,1436,Agência Araraquara,BA,Campinas,"Avenida Principal, 941",+55 (85) 97871-3793,Ricardo Rodrigues,2018-04-16
+AG_0011,7229,Agência Campinas,RS,São Paulo,"Avenida Principal, 9480",+55 (25) 93125-1310,Paula Martins,2021-09-05
+AG_0012,3481,Agência Araraquara,RS,Araraquara,"Avenida Principal, 8321",+55 (89) 97726-2020,Beatriz Oliveira,2020-07-23
+AG_0013,4397,Agência Santos,SC,Araraquara,"Avenida Principal, 5240",+55 (33) 97531-9734,Fernanda Ribeiro,2022-05-27
+AG_0014,5331,Agência Araraquara,RS,Campinas,"Avenida Principal, 4671",+55 (82) 94890-4684,Carlos Costa,2018-06-21
+AG_0015,4396,Agência Araraquara,PE,Araraquara,"Avenida Principal, 5814",+55 (82) 94480-5715,Maria Ferreira,2018-10-15
+AG_0016,9899,Agência Araraquara,PR,Santos,"Avenida Principal, 2499",+55 (48) 90689-5712,Beatriz Santos,2022-06-29
+AG_0017,8247,Agência Santos,SC,Campinas,"Avenida Principal, 3410",+55 (79) 94442-5450,Pedro Santos,2019-06-22
+AG_0018,4920,Agência Campinas,SP,Campinas,"Avenida Principal, 3914",+55 (17) 91641-7771,Fernanda Medeiros,2021-01-29
+AG_0019,2647,Agência Campinas,SP,Campinas,"Avenida Principal, 6766",+55 (94) 97793-8822,André Pereira,2017-11-24
+AG_0020,5706,Agência Santos,BA,São Paulo,"Avenida Principal, 1565",+55 (94) 99406-4804,Ricardo Medeiros,2018-04-08

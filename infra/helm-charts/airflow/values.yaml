@@ -1,0 +1,63 @@
+nameOverride: airflow
+fullnameOverride: airflow
+
+replicaCount: 1
+
+image:
+  repository: data-master-airflow
+  tag: "git-unpublished"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+sparkImage:
+  repository: data-master-spark-jobs
+  tag: "git-unpublished"
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+airflow:
+  secretName: data-master-airflow-secret
+  firstname: Data
+  lastname: Engineer
+  email: admin@example.com
+  dagId: banking_data_vault_pipeline
+
+env:
+  - name: PROJECT_ROOT
+    value: /opt/airflow
+  - name: LAKEHOUSE_ROOT
+    value: s3a://lakehouse
+  - name: RUNTIME_PROFILE
+    value: presentation-demo
+  - name: KUBERNETES_NAMESPACE
+    value: data-platform
+  - name: KUBERNETES_CONN_ID
+    value: kubernetes_default
+  - name: SPARK_SERVICE_ACCOUNT
+    value: spark
+  - name: MINIO_ENDPOINT
+    value: http://minio.data-platform.svc.cluster.local:9000
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: standard
+  dataSize: 10Gi
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "500m"
+  limits:
+    memory: "4Gi"
+    cpu: "2"
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

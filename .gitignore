@@ -1,0 +1,41 @@
+﻿# Ignorar arquivos temporários e segredos
+*.log
+*.tmp
+*.bak
+*.swp
+__pycache__/
+*.pyc
+*.DS_Store
+.vscode/
+.idea/
+venv/
+env/
+*.pem
+*.key
+docs/roteiro-apresentacao-banca.md
+*.bkp
+docs/guia-*.md
+
+# Personal study / private rehearsal notes
+.local-study/
+.local-defense/
+.private-study/
+.private-notes/
+personal-study/
+study-notes/
+rehearsal-notes/
+board-rehearsal/
+spdd-private/
+*.personal.md
+*.private.md
+*.rehearsal.md
+*.study.md
+
+# Public repository boundary
+spdd/
+.codex/
+.chatgpt-projects/
+prompts/
+private/
+internal/
+*.prompt.md

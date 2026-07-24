@@ -1,0 +1,16 @@
+FROM apache/airflow:2.8.4-python3.10
+
+USER airflow
+
+RUN pip install --no-cache-dir \
+    apache-airflow-providers-cncf-kubernetes==8.4.2 \
+    kubernetes==29.0.0
+
+COPY dags/ /opt/airflow/dags/
+
+ENV PROJECT_ROOT=/opt/airflow
+ENV AIRFLOW_IMAGE_ROLE=ORCHESTRATION_ONLY
+
+LABEL org.opencontainers.image.title="Data Master Airflow Orchestrator" \
+      org.opencontainers.image.description="Airflow orchestration image without Spark processing runtime" \
+      io.data-master.image-role="orchestration-only"

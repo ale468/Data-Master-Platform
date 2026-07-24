@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: airflow-app
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.git.repoUrl | quote }}
+    targetRevision: {{ .Values.git.revision | quote }}
+    path: infra/helm-charts/airflow
+    helm:
+      parameters:
+        - name: image.repository
+          value: {{ .Values.images.airflow.repository | quote }}
+        - name: image.tag
+          value: {{ .Values.images.airflow.tag | quote }}
+        - name: sparkImage.repository
+          value: {{ .Values.images.spark.repository | quote }}
+        - name: sparkImage.tag
+          value: {{ .Values.images.spark.tag | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: data-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

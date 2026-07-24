@@ -1,0 +1,16 @@
+produto_id,nome_produto,descricao,taxa_juros,comissao,data_lancamento,status
+PROD_0001,Conta Corrente,Produto bancário 1,22.83,0.88,2021-06-06,Ativo
+PROD_0002,Conta Corrente,Produto bancário 2,24.93,1.98,2023-08-07,Ativo
+PROD_0003,Cartão de Crédito,Produto bancário 3,21.92,0.05,2023-03-11,Ativo
+PROD_0004,Cartão de Crédito,Produto bancário 4,7.11,4.95,2023-05-01,Inativo
+PROD_0005,Poupança,Produto bancário 5,21.28,2.34,2025-04-18,Ativo
+PROD_0006,Cartão de Crédito,Produto bancário 6,4.06,2.29,2024-12-07,Ativo
+PROD_0007,Conta Corrente,Produto bancário 7,18.42,3.95,2023-03-12,Ativo
+PROD_0008,Poupança,Produto bancário 8,15.27,3.19,2024-02-07,Inativo
+PROD_0009,Seguro,Produto bancário 9,8.2,2.0,2025-11-03,Ativo
+PROD_0010,Poupança,Produto bancário 10,11.94,4.68,2026-05-04,Inativo
+PROD_0011,Empréstimo,Produto bancário 11,5.89,3.77,2024-07-11,Inativo
+PROD_0012,Seguro,Produto bancário 12,18.07,0.06,2022-09-17,Inativo
+PROD_0013,Poupança,Produto bancário 13,1.55,0.59,2024-08-27,Ativo
+PROD_0014,Empréstimo,Produto bancário 14,17.15,4.62,2021-05-25,Inativo
+PROD_0015,Conta Corrente,Produto bancário 15,15.97,4.7,2024-04-25,Ativo

@@ -1,0 +1,37 @@
+version: 1
+scope: synthetic_banking_domain
+default_policy:
+  status: demonstrative
+  formal_compliance_claim: false
+
+policies:
+  bronze:
+    retention: demo_lifecycle
+    action_after_retention: vacuum_or_rebuild_demo_data
+    notes: Source-aligned layer; restricted access; synthetic data.
+
+  raw_vault:
+    retention: demo_lifecycle
+    action_after_retention: anonymize_or_rebuild_demo_data
+    notes: Historical layer; PII satellites must be governed.
+
+  gold:
+    retention: demo_lifecycle
+    action_after_retention: delete_or_refresh_from_governed_sources
+    notes: Consumption layer; must remain masked/minimized.
+
+subject_rights:
+  default_when_no_legal_retention:
+    direct_identifier: anonymize
+    quasi_identifier: anonymize_or_generalize
+    financial_sensitive: anonymize_or_block
+    masked_identifier: delete_or_refresh_gold
+    technical_identifier: retain_if_needed_for_lineage
+    business_metadata: retain
+  default_when_retention_required:
+    direct_identifier: retained_by_policy
+    quasi_identifier: retained_by_policy
+    financial_sensitive: retained_by_policy
+    masked_identifier: masked_or_minimized_in_gold
+    technical_identifier: retain_if_needed_for_lineage
+    business_metadata: retain

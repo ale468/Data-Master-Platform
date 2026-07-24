@@ -1,0 +1,59 @@
+name: Public bootstrap validation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Validate public boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in spdd prompts private internal .codex .chatgpt-projects evidence/runtime; do
+            test ! -e "$path"
+          done
+          if find . -type f \( -name '*.private.md' -o -name '*.prompt.md' \) -print -quit | grep -q .; then
+            echo "Forbidden private file detected"
+            exit 1
+          fi
+          if git grep -I -n -E 'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY'; then
+            echo "High-confidence secret pattern detected"
+            exit 1
+          fi
+
+      - name: Compile Python
+        run: python -m compileall -q dags jobs tests
+
+      - name: Run runtime tests
+        run: python -m unittest discover -s tests/runtime -p "test_*.py"
+
+  build-airflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Airflow image without publishing
+        run: docker build --file Dockerfile.airflow --tag data-master-airflow:validation .
+
+  build-spark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Spark image without publishing
+        run: docker build --file Dockerfile.spark --tag data-master-spark:validation .

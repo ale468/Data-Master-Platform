@@ -1,0 +1,11 @@
+git:
+  repoUrl: https://github.com/ale468/Data-Master-Platform.git
+  revision: main
+
+images:
+  airflow:
+    repository: data-master-airflow
+    tag: git-unpublished
+  spark:
+    repository: data-master-spark-jobs
+    tag: git-unpublished

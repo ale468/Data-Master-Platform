@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: data-master-platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: __GIT_REPO_URL__
+    targetRevision: __GIT_REVISION__
+    path: infra/argocd/applications
+    helm:
+      parameters:
+        - name: git.repoUrl
+          value: __GIT_REPO_URL__
+        - name: git.revision
+          value: __GIT_REVISION__
+        - name: images.airflow.repository
+          value: __AIRFLOW_IMAGE_REPOSITORY__
+        - name: images.airflow.tag
+          value: __IMAGE_TAG__
+        - name: images.spark.repository
+          value: __SPARK_IMAGE_REPOSITORY__
+        - name: images.spark.tag
+          value: __IMAGE_TAG__
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

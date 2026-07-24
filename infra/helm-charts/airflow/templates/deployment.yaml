@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "airflow.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "airflow.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "airflow.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "airflow.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: airflow
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: airflow
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: AIRFLOW_HOME
+          value: /opt/airflow/runtime
+        - name: AIRFLOW__CORE__DAGS_FOLDER
+          value: /opt/airflow/dags
+        - name: AIRFLOW__CORE__EXECUTOR
+          value: SequentialExecutor
+        - name: AIRFLOW__CORE__LOAD_EXAMPLES
+          value: "False"
+        - name: AIRFLOW__CORE__STORE_SERIALIZED_DAGS
+          value: "True"
+        - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+          value: sqlite:////opt/airflow/runtime/airflow.db
+        - name: AIRFLOW__WEBSERVER__EXPOSE_CONFIG
+          value: "True"
+        - name: AIRFLOW__WEBSERVER__SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.airflow.secretName }}
+              key: AIRFLOW_WEBSERVER_SECRET_KEY
+        - name: AIRFLOW__WEBSERVER__BASE_URL
+          value: http://localhost:8082
+        - name: DATA_MASTER_SPARK_IMAGE
+          value: "{{ .Values.sparkImage.repository }}:{{ .Values.sparkImage.tag }}"
+        {{- range .Values.env }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        command:
+        - bash
+        - -ec
+        - |
+          mkdir -p /opt/airflow/runtime/logs
+          rm -f /opt/airflow/runtime/airflow-webserver.pid
+          airflow db migrate
+          airflow users create \
+            --username "$AIRFLOW_ADMIN_USERNAME" \
+            --password "$AIRFLOW_ADMIN_PASSWORD" \
+            --firstname {{ .Values.airflow.firstname | quote }} \
+            --lastname {{ .Values.airflow.lastname | quote }} \
+            --role Admin \
+            --email {{ .Values.airflow.email | quote }} || true
+          airflow connections delete kubernetes_default || true
+          airflow connections add kubernetes_default \
+            --conn-type kubernetes \
+            --conn-extra '{"in_cluster": true, "namespace": "data-platform"}'
+          airflow variables set RUNTIME_PROFILE presentation-demo
+          airflow variables set DATA_MASTER_SPARK_IMAGE "$DATA_MASTER_SPARK_IMAGE"
+          airflow variables set KUBERNETES_NAMESPACE data-platform
+          airflow variables set KUBERNETES_CONN_ID kubernetes_default
+          airflow variables set SPARK_SERVICE_ACCOUNT spark
+          airflow variables set BRONZE_PATH s3a://lakehouse/bronze
+          airflow variables set RAW_VAULT_PATH s3a://lakehouse/raw_vault
+          airflow variables set BUSINESS_VAULT_PATH s3a://lakehouse/business_vault
+          airflow variables set GOLD_PATH s3a://lakehouse/gold
+          airflow variables set MONITORING_PATH s3a://lakehouse/monitoring
+          airflow scheduler &
+          exec airflow webserver --port 8080 --workers 1
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: airflow-runtime
+          mountPath: /opt/airflow/runtime
+        - name: airflow-data
+          mountPath: /opt/airflow/data
+        envFrom:
+        - secretRef:
+            name: {{ .Values.airflow.secretName }}
+      volumes:
+      - name: airflow-runtime
+        {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "airflow.fullname" . }}
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      - name: airflow-data
+        {{- if .Values.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "airflow.fullname" . }}-data
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

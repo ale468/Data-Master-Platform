@@ -1,0 +1,68 @@
+nameOverride: minio
+fullnameOverride: minio
+
+replicaCount: 1
+
+image:
+  repository: minio/minio
+  tag: RELEASE.2024-01-28T22-35-53Z
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9000
+  consolePort: 9001
+
+credentialsSecretName: data-master-minio-secret
+
+clientImage:
+  repository: minio/mc
+  tag: RELEASE.2024-01-13T08-44-48Z
+  pullPolicy: IfNotPresent
+
+# Persistence
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  storageClass: ""
+
+# Resources
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 100m
+  limits:
+    memory: 512Mi
+    cpu: 200m
+
+# Probes
+livenessProbe:
+  httpGet:
+    path: /minio/health/live
+    port: 9000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /minio/health/ready
+    port: 9000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# Security context
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Service account
+serviceAccount:
+  create: true
+  name: ""
+
+# Node selector, tolerations, affinity
+nodeSelector: {}
+tolerations: []
+affinity: {}
