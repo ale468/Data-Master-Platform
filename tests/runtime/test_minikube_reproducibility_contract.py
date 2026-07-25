@@ -34,7 +34,11 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             source = path.read_text(encoding="utf-8")
             self.assertIn("Set-StrictMode", source, path.name)
             self.assertIn('$ErrorActionPreference = "Stop"', source, path.name)
-            self.assertNotRegex(source, r"C:\\Users\\", path.name)
+            self.assertNotRegex(
+                source,
+                r"C:" + r"\\Users\\",
+                path.name,
+            )
         common = (SCRIPTS / "DataMaster.Minikube.Common.ps1").read_text(
             encoding="utf-8"
         )
