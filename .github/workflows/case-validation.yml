@@ -1,0 +1,82 @@
+name: Public case validation
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  case-validation:
+    if: github.repository == 'ale468/Data-Master-Platform'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run the fail-closed public case validation
+        shell: pwsh
+        run: |
+          $resultDirectory = Join-Path "${{ runner.temp }}" "case-validation"
+          $resultPath = Join-Path $resultDirectory "case-validation.json"
+          New-Item -ItemType Directory -Path $resultDirectory -Force | Out-Null
+
+          & ./scripts/Invoke-PublicCaseValidation.ps1 `
+            -RuntimeProfile local-small `
+            -ResultPath $resultPath
+          exit $LASTEXITCODE
+
+      - name: Write validation summary
+        if: always()
+        shell: pwsh
+        run: |
+          $resultPath = Join-Path "${{ runner.temp }}" "case-validation/case-validation.json"
+          $rows = @(
+            @("Pipeline", "NOT_AVAILABLE"),
+            @("Data Vault", "NOT_AVAILABLE"),
+            @("Masking", "NOT_AVAILABLE"),
+            @("Observability", "NOT_AVAILABLE"),
+            @("Secret scan", "NOT_AVAILABLE"),
+            @("Overall result", "NOT_AVAILABLE")
+          )
+
+          if (Test-Path -LiteralPath $resultPath) {
+            try {
+              $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+              $rows = @(
+                @("Pipeline", [string]$result.checks.pipeline.status),
+                @("Data Vault", [string]$result.checks.data_vault.status),
+                @("Masking", [string]$result.checks.masking.status),
+                @("Observability", [string]$result.checks.observability.status),
+                @("Secret scan", [string]$result.checks.secret_scan.status),
+                @("Overall result", [string]$result.checks.overall.status)
+              )
+            }
+            catch {
+              $rows[5][1] = "INVALID_JSON"
+            }
+          }
+
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "## Public case validation"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "| Gate | Result |"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "|---|---|"
+          foreach ($row in $rows) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "| $($row[0]) | ``$($row[1])`` |"
+          }
+
+      - name: Upload sanitized validation result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-case-validation
+          path: ${{ runner.temp }}/case-validation/case-validation.json
+          if-no-files-found: error
+          retention-days: 14
