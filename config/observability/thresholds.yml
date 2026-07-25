@@ -1,0 +1,33 @@
+version: 1
+scope: controlled_local_observability
+runtime_profiles:
+  - local-small
+
+thresholds:
+  monitoring:
+    minimum_events: 5
+
+  stage_duration:
+    maximum_seconds_by_stage:
+      generate_sample_data: 30
+      bronze: 180
+      raw_hubs: 180
+      raw_links: 180
+      raw_satellites: 180
+      gold: 180
+
+  volume:
+    minimum_source_rows: 1
+    minimum_layer_rows:
+      bronze: 1
+      raw_vault_hubs: 1
+      raw_vault_links: 1
+      raw_vault_satellites: 1
+      gold: 1
+    maximum_drop_percent: 50.0
+
+  quality:
+    maximum_failures: 0
+
+  masking:
+    maximum_failures: 0
