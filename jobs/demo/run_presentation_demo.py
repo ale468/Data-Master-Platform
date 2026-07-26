@@ -33,6 +33,11 @@ def _parse_args() -> argparse.Namespace:
         default=os.getenv("RUNTIME_PROFILE", os.getenv("DM_RUNTIME_PROFILE", "presentation-demo")),
         help="Runtime profile. DM-DEMO-001 expects presentation-demo.",
     )
+    parser.add_argument(
+        "--expected-runtime-profile",
+        default="presentation-demo",
+        help="Runtime profile expected by this validation invocation.",
+    )
     parser.add_argument("--work-dir", default=None, help="Optional work directory.")
     parser.add_argument("--batch-id", default=None, help="Optional batch id.")
     parser.add_argument(
@@ -100,11 +105,15 @@ def _readiness_by_pdf_criterion(
     layer_counts: Dict[str, int],
     monitoring_rows: int,
     masking_failures: Dict[str, Any],
+    runtime_profile: str,
 ) -> Dict[str, Dict[str, str]]:
+    local_direct_validation = runtime_profile == "local-small"
     return {
         "extracao_dados": {
             "status": "covered",
-            "evidence": "presentation-demo generated synthetic banking input files.",
+            "evidence": (
+                f"{runtime_profile} generated synthetic banking input files."
+            ),
         },
         "ingestao_batch": {
             "status": "covered" if layer_counts["bronze"] > 0 else "failed",
@@ -149,8 +158,14 @@ def _readiness_by_pdf_criterion(
             "evidence": "High-confidence secret scan and protected Gold baseline validated.",
         },
         "escalabilidade": {
-            "status": "covered",
-            "evidence": "presentation-demo profile loaded and executed; cloud-ready remains a reference profile.",
+            "status": "baseline_only" if local_direct_validation else "covered",
+            "evidence": (
+                "local-small executed as a direct local validation; it does not "
+                "prove distributed execution, autoscaling, or cloud readiness."
+                if local_direct_validation
+                else "presentation-demo profile loaded and executed; cloud-ready "
+                "remains a reference profile."
+            ),
         },
         "reprodutibilidade": {
             "status": "with_prerequisites",
@@ -158,82 +173,133 @@ def _readiness_by_pdf_criterion(
         },
         "readme_relatorio": {
             "status": "gate_controlled",
-            "evidence": "README claims are governed by public claim gates and validation records.",
+            "evidence": "README claims remain controlled by public validation and review gates.",
         },
         "apresentacao": {
-            "status": "ready_local_with_declared_limitations",
-            "evidence": "Evidence payload covers must-have technical criteria; production broker, external connector tooling, production CDC and cloud remain outside this runner.",
+            "status": (
+                "not_evaluated_by_local_direct_validation"
+                if local_direct_validation
+                else "ready_local_with_declared_limitations"
+            ),
+            "evidence": (
+                "local-small validates the direct Spark data path only; Airflow, "
+                "Minikube, integrated demo readiness, and production claims are "
+                "outside this execution."
+                if local_direct_validation
+                else "Evidence payload covers must-have technical criteria; "
+                "production broker, external connector tooling, production CDC "
+                "and cloud remain outside this runner."
+            ),
         },
     }
+
+
+def _execution_scope(runtime_profile: str) -> str:
+    if runtime_profile == "local-small":
+        return "local_direct_validation"
+    return "presentation_demo_runner"
+
+
+def _readiness_status(runtime_profile: str, failed: bool) -> str:
+    if failed:
+        return "Not ready"
+    if runtime_profile == "local-small":
+        return (
+            "Local data-path validation passed; Airflow, Minikube, and integrated "
+            "demo readiness were not evaluated"
+        )
+    return "Demo-ready local with declared limitations"
+
+
+def _demo_gate_result(runtime_profile: str, failed: bool) -> str:
+    if failed:
+        return "Not passed"
+    if runtime_profile == "local-small":
+        return (
+            "Not evaluated by local-small; public and integrated demo claims "
+            "remain gate-controlled"
+        )
+    return "Baseline passed; public claims remain gate-controlled"
 
 
 def main() -> int:
     args = _parse_args()
-
-    os.environ["RUNTIME_PROFILE"] = args.runtime_profile
-    os.environ["DM_RUNTIME_PROFILE"] = args.runtime_profile
-    os.environ["SPARK_LOG_LEVEL"] = args.log_level
-    os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
-    os.environ.setdefault("SPARK_IVY_DIR", "/tmp/.ivy2")
-
-    work_dir = Path(args.work_dir or tempfile.mkdtemp(prefix="dm-presentation-demo-"))
-    sample_data_path = work_dir / "sample"
-    bronze_path = _as_file_uri(work_dir / "bronze")
-    raw_vault_path = _as_file_uri(work_dir / "raw_vault")
-    business_vault_path = _as_file_uri(work_dir / "business_vault")
-    gold_path = _as_file_uri(work_dir / "gold")
-    monitoring_path = _as_file_uri(work_dir / "monitoring")
     batch_id = args.batch_id or "presentation_demo_" + datetime.now().strftime("%Y%m%d%H%M%S")
-
-    os.environ["BRONZE_PATH"] = bronze_path
-    os.environ["RAW_VAULT_PATH"] = raw_vault_path
-    os.environ["BUSINESS_VAULT_PATH"] = business_vault_path
-    os.environ["GOLD_PATH"] = gold_path
-    os.environ["MONITORING_PATH"] = monitoring_path
-
-    from config import Config
-    from data_vault_quality_gate import evaluate_configured_gate, render_gate_output
-    from delta_io import DeltaIO
-    from generate_banking_sample_data import generate_all_sample_data
-    from load_bronze import run_bronze_pipeline
-    from load_gold import run_business_vault_pipeline
-    from load_hubs import run_hubs_pipeline
-    from load_links import run_links_pipeline
-    from load_satellites import run_satellites_pipeline
-    from monitoring import MonitoringLogger
-    from run_gold_masking_smoke import (
-        _masking_function_samples,
-        _scan_high_confidence_secrets,
-        _validate_gold_outputs,
-    )
-    from run_observability_smoke import (
-        _airflow_static_summary,
-        _monitoring_summary,
-        _run_stage,
-        _sum_rows,
-        _table_stats,
-    )
-    from spark_session import SparkSessionFactory, create_spark_session
-
     started_at = datetime.now()
-    spark = create_spark_session()
     summary: Dict[str, Any] = {
         "runtime_profile": args.runtime_profile,
-        "expected_runtime_profile": "presentation-demo",
+        "expected_runtime_profile": args.expected_runtime_profile,
+        "execution_scope": _execution_scope(args.runtime_profile),
         "batch_id": batch_id,
-        "work_dir": str(work_dir),
-        "sample_data_path": str(sample_data_path),
-        "bronze_path": bronze_path,
-        "raw_vault_path": raw_vault_path,
-        "business_vault_path": business_vault_path,
-        "gold_path": gold_path,
-        "monitoring_path": monitoring_path,
-        "spark_version": spark.version,
-        "airflow_static": _airflow_static_summary(),
         "status": "UNKNOWN",
     }
+    spark_factory = None
+    return_code = 1
 
     try:
+        os.environ["RUNTIME_PROFILE"] = args.runtime_profile
+        os.environ["DM_RUNTIME_PROFILE"] = args.runtime_profile
+        os.environ["SPARK_LOG_LEVEL"] = args.log_level
+        os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
+        os.environ.setdefault("SPARK_IVY_DIR", "/tmp/.ivy2")
+
+        work_dir = Path(
+            args.work_dir or tempfile.mkdtemp(prefix="dm-presentation-demo-")
+        )
+        sample_data_path = work_dir / "sample"
+        bronze_path = _as_file_uri(work_dir / "bronze")
+        raw_vault_path = _as_file_uri(work_dir / "raw_vault")
+        business_vault_path = _as_file_uri(work_dir / "business_vault")
+        gold_path = _as_file_uri(work_dir / "gold")
+        monitoring_path = _as_file_uri(work_dir / "monitoring")
+
+        os.environ["BRONZE_PATH"] = bronze_path
+        os.environ["RAW_VAULT_PATH"] = raw_vault_path
+        os.environ["BUSINESS_VAULT_PATH"] = business_vault_path
+        os.environ["GOLD_PATH"] = gold_path
+        os.environ["MONITORING_PATH"] = monitoring_path
+
+        from config import Config
+        from data_vault_quality_gate import (
+            evaluate_configured_gate,
+            render_gate_output,
+        )
+        from delta_io import DeltaIO
+        from generate_banking_sample_data import generate_all_sample_data
+        from load_bronze import run_bronze_pipeline
+        from load_gold import run_business_vault_pipeline
+        from load_hubs import run_hubs_pipeline
+        from load_links import run_links_pipeline
+        from load_satellites import run_satellites_pipeline
+        from monitoring import MonitoringLogger
+        from run_gold_masking_smoke import (
+            _masking_function_samples,
+            _scan_high_confidence_secrets,
+            _validate_gold_outputs,
+        )
+        from run_observability_smoke import (
+            _airflow_static_summary,
+            _monitoring_summary,
+            _run_stage,
+            _sum_rows,
+            _table_stats,
+        )
+        from spark_session import SparkSessionFactory, create_spark_session
+
+        spark_factory = SparkSessionFactory
+        spark = create_spark_session()
+        summary.update({
+            "work_dir": str(work_dir),
+            "sample_data_path": str(sample_data_path),
+            "bronze_path": bronze_path,
+            "raw_vault_path": raw_vault_path,
+            "business_vault_path": business_vault_path,
+            "gold_path": gold_path,
+            "monitoring_path": monitoring_path,
+            "spark_version": spark.version,
+            "airflow_static": _airflow_static_summary(),
+        })
+
         stage_results = {}
         stage_results["generate_sample_data"] = _run_stage(
             "generate_sample_data",
@@ -322,13 +388,16 @@ def main() -> int:
             layer_counts,
             monitoring["rows"],
             masking_failures,
+            args.runtime_profile,
         )
         data_vault_gate = stage_results["data_vault_quality_gate"]["result"][
             "gate_result"
         ]
 
         validation_failures = {
-            "runtime_profile_not_presentation_demo": args.runtime_profile != "presentation-demo",
+            "runtime_profile_mismatch": (
+                args.runtime_profile != args.expected_runtime_profile
+            ),
             "stage_failures": [
                 stage_name
                 for stage_name, result in stage_results.items()
@@ -345,7 +414,7 @@ def main() -> int:
             "data_vault_quality_gate_failed": data_vault_gate["status"] != "PASS",
         }
         failed = any([
-            validation_failures["runtime_profile_not_presentation_demo"],
+            validation_failures["runtime_profile_mismatch"],
             bool(validation_failures["stage_failures"]),
             validation_failures["missing_monitoring_rows"],
             bool(validation_failures["missing_layer_counts"]),
@@ -357,8 +426,8 @@ def main() -> int:
         finished_at = datetime.now()
         summary.update({
             "status": "SUCCESS" if not failed else "FAILURE",
-            "readiness_status": "Demo-ready local with declared limitations" if not failed else "Not ready",
-            "demo_gate_result": "Baseline passed; public claims remain gate-controlled",
+            "readiness_status": _readiness_status(args.runtime_profile, failed),
+            "demo_gate_result": _demo_gate_result(args.runtime_profile, failed),
             "duration_seconds": round((finished_at - started_at).total_seconds(), 3),
             "started_at": started_at.isoformat(),
             "finished_at": finished_at.isoformat(),
@@ -387,12 +456,20 @@ def main() -> int:
             "duration_seconds": round((finished_at - started_at).total_seconds(), 3),
             "started_at": started_at.isoformat(),
             "finished_at": finished_at.isoformat(),
-            "error": str(exc),
+            "error_type": type(exc).__name__,
+            "error": "Execution failed; inspect the preceding stage logs.",
         })
         return_code = 1
 
     finally:
-        SparkSessionFactory.stop()
+        if spark_factory is not None:
+            try:
+                spark_factory.stop()
+            except Exception as exc:
+                summary["status"] = "FAILURE"
+                summary["readiness_status"] = "Not ready"
+                summary["cleanup_error_type"] = type(exc).__name__
+                return_code = 1
         print("PRESENTATION_DEMO_RESULT=" + json.dumps(summary, sort_keys=True))
 
     return return_code

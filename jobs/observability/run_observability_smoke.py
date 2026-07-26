@@ -5,6 +5,7 @@ and emits one compact JSON evidence payload with statuses, durations,
 monitoring rows, and row counts by layer.
 """
 import argparse
+import ast
 import json
 import os
 import sys
@@ -159,32 +160,59 @@ def _monitoring_summary(spark, monitoring_logger, batch_id: str) -> Dict[str, An
 
 def _airflow_static_summary() -> Dict[str, Any]:
     dag_path = REPO_ROOT / "dags" / "banking_data_vault_pipeline_dag.py"
+    expected_stage_tasks = [
+        ("bronze", "run_bronze"),
+        ("hubs", "run_hubs"),
+        ("links", "run_links"),
+        ("satellites", "run_satellites"),
+        ("gold", "run_gold"),
+        ("data-vault-gate", "run_data_vault_gate"),
+        ("masking-gate", "run_masking_gate"),
+        ("evidence", "run_evidence"),
+    ]
+    expected_tasks = [task_id for _, task_id in expected_stage_tasks]
     if not dag_path.exists():
         return {
             "status": "MISSING",
-            "dag_file": str(dag_path),
+            "dag_id": "banking_data_vault_pipeline",
             "task_ids": [],
+            "expected_task_ids": expected_tasks,
+            "missing_expected_task_ids": expected_tasks,
         }
 
     content = dag_path.read_text(encoding="utf-8", errors="ignore")
-    expected_tasks = [
-        "generate_sample_data",
-        "validate_sample_data",
-        "load_bronze_tables",
-        "load_raw_vault_hubs",
-        "load_raw_vault_links",
-        "load_raw_vault_satellites",
-        "load_business_vault_gold",
-        "run_data_quality_checks",
-        "write_execution_summary",
+    declared_stages = []
+    try:
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Assign):
+                continue
+            if not any(
+                isinstance(target, ast.Name) and target.id == "stages"
+                for target in node.targets
+            ):
+                continue
+            value = ast.literal_eval(node.value)
+            if isinstance(value, list) and all(
+                isinstance(stage, str) for stage in value
+            ):
+                declared_stages = value
+                break
+    except (SyntaxError, ValueError):
+        declared_stages = []
+
+    present_tasks = [
+        task_id
+        for stage, task_id in expected_stage_tasks
+        if stage in declared_stages
     ]
-    present_tasks = [task_id for task_id in expected_tasks if task_id in content]
+    missing_tasks = sorted(set(expected_tasks) - set(present_tasks))
     return {
-        "status": "STATIC_READABLE",
-        "dag_file": str(dag_path),
+        "status": "STATIC_READABLE" if not missing_tasks else "STATIC_INCOMPLETE",
         "dag_id": "banking_data_vault_pipeline",
         "task_ids": present_tasks,
-        "missing_expected_task_ids": sorted(set(expected_tasks) - set(present_tasks)),
+        "expected_task_ids": expected_tasks,
+        "missing_expected_task_ids": missing_tasks,
     }
 
 

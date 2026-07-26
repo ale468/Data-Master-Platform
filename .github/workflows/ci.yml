@@ -1,4 +1,4 @@
-name: Public bootstrap validation
+name: Public quality gates
 
 on:
   push:
@@ -11,49 +11,246 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  static-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Checkout
+      - name: Check out public source
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Validate public boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          for path in spdd prompts private internal .codex .chatgpt-projects evidence/runtime; do
-            test ! -e "$path"
-          done
-          if find . -type f \( -name '*.private.md' -o -name '*.prompt.md' \) -print -quit | grep -q .; then
-            echo "Forbidden private file detected"
-            exit 1
-          fi
-          if git grep -I -n -E 'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY'; then
-            echo "High-confidence secret pattern detected"
-            exit 1
-          fi
+      - name: Install validation dependency
+        run: python -m pip install --disable-pip-version-check PyYAML==6.0.2
+
+      - name: Validate boundary, formats, links, paths, and secrets
+        run: python scripts/validate_public_repository.py --check all
+
+      - name: Parse every PowerShell script
+        shell: pwsh
+        run: ./scripts/Test-PowerShellSyntax.ps1
 
       - name: Compile Python
         run: python -m compileall -q dags jobs tests
 
-      - name: Run runtime tests
-        run: python -m unittest discover -s tests/runtime -p "test_*.py"
+      - name: Run runtime contract tests
+        run: python -m unittest discover -s tests/runtime -p "test_*.py" -v
 
-  build-airflow:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build Airflow image without publishing
-        run: docker build --file Dockerfile.airflow --tag data-master-airflow:validation .
+      - name: Run durable evidence contract tests
+        shell: pwsh
+        run: ./tests/runtime/Test-DurableExecutionEvidence.ps1
 
-  build-spark:
+  helm-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.3
+
+      - name: Lint and render the allowlisted charts
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(
+            "infra/argocd/applications"
+            "infra/helm-charts/airflow"
+            "infra/helm-charts/hive-metastore"
+            "infra/helm-charts/jupyter"
+            "infra/helm-charts/minio"
+            "infra/helm-charts/postgres-metastore"
+          )
+          mapfile -t discovered < <(
+            find infra -name Chart.yaml -type f -print |
+              sed 's#/Chart.yaml$##' |
+              sort
+          )
+          mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
+          diff -u \
+            <(printf '%s\n' "${expected_sorted[@]}") \
+            <(printf '%s\n' "${discovered[@]}")
+
+          for chart in "${expected[@]}"; do
+            helm lint "$chart"
+            helm template validation "$chart" >/dev/null
+          done
+
+  spark-quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - name: Build Spark image without publishing
-        run: docker build --file Dockerfile.spark --tag data-master-spark:validation .
+        run: |
+          docker build \
+            --file Dockerfile.spark \
+            --tag data-master-spark:quality-gates \
+            .
+
+      - name: Run Data Vault, lineage, and masking tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --user 65534:65534 \
+            --entrypoint python3 \
+            --env PYTHONDONTWRITEBYTECODE=1 \
+            --env SPARK_LOCAL_IP=127.0.0.1 \
+            --env SPARK_USER=nobody \
+            --env "JAVA_TOOL_OPTIONS=-XX:-UseContainerSupport -Duser.home=/tmp" \
+            --env SPARK_IVY_DIR=/tmp/.ivy2 \
+            --env SPARK_JARS_PACKAGES= \
+            --mount "type=bind,source=${PWD},target=/repo,readonly" \
+            --workdir /tmp \
+            data-master-spark:quality-gates \
+            -B -m unittest discover \
+              -s /repo/tests/data_vault \
+              -p "test_*.py" \
+              -v
+
+      - name: Run connector, streaming, CDC, and Gold masking contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_spark_python() {
+            docker run --rm \
+              --user 65534:65534 \
+              --entrypoint python3 \
+              --env PYTHONDONTWRITEBYTECODE=1 \
+              --env SPARK_LOCAL_IP=127.0.0.1 \
+              --env SPARK_USER=nobody \
+              --env "JAVA_TOOL_OPTIONS=-XX:-UseContainerSupport -Duser.home=/tmp" \
+              --env SPARK_IVY_DIR=/tmp/.ivy2 \
+              --env SPARK_JARS_PACKAGES= \
+              --mount "type=bind,source=${PWD},target=/repo,readonly" \
+              --workdir /tmp \
+              data-master-spark:quality-gates \
+              -B "$@"
+          }
+
+          run_spark_python \
+            /repo/jobs/connectors/run_connector_contract_smoke.py
+          run_spark_python \
+            /repo/jobs/streaming/run_digital_events_streaming_smoke.py \
+            --runtime-profile local-small
+          run_spark_python \
+            /repo/jobs/cdc/run_cdc_smoke.py \
+            --runtime-profile local-small
+          run_spark_python \
+            /repo/jobs/business_vault/run_gold_masking_smoke.py \
+            --runtime-profile local-small
+
+      - name: Prove controlled observability failure detection
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          output="$(
+            docker run --rm \
+              --user 65534:65534 \
+              --entrypoint python3 \
+              --env PYTHONDONTWRITEBYTECODE=1 \
+              --env SPARK_LOCAL_IP=127.0.0.1 \
+              --env SPARK_USER=nobody \
+              --env "JAVA_TOOL_OPTIONS=-XX:-UseContainerSupport -Duser.home=/tmp" \
+              --env SPARK_IVY_DIR=/tmp/.ivy2 \
+              --env SPARK_JARS_PACKAGES= \
+              --mount "type=bind,source=${PWD},target=/repo,readonly" \
+              --workdir /tmp \
+              data-master-spark:quality-gates \
+              -B /repo/jobs/observability/run_observability_failure_smoke.py \
+              --scenario invalid-schema \
+              --runtime-profile local-small 2>&1
+          )"
+          failure_exit_code=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$failure_exit_code" -eq 1
+
+          marker_count="$(
+            printf '%s\n' "$output" |
+              grep -c '^OBSERVABILITY_FAILURE_SMOKE_RESULT='
+          )"
+          test "$marker_count" -eq 1
+          payload="$(
+            printf '%s\n' "$output" |
+              sed -n 's/^OBSERVABILITY_FAILURE_SMOKE_RESULT=//p'
+          )"
+          PAYLOAD="$payload" python3 - <<'PY'
+          import json
+          import os
+
+          result = json.loads(os.environ["PAYLOAD"])
+          assert result["detection_status"] == "DETECTED"
+          assert result["pipeline_status"] == "FAILURE"
+          assert result["failed_stage"] == "bronze"
+          assert result["rule_triggered"] == "source.schema.required_columns"
+          assert result["process_exit_code"] == 1
+          PY
+
+  airflow-quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build Airflow image without publishing
+        run: |
+          docker build \
+            --file Dockerfile.airflow \
+            --tag data-master-airflow:quality-gates \
+            .
+
+      - name: Import DAG and verify the eight orchestration tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --env AIRFLOW__CORE__LOAD_EXAMPLES=False \
+            --env AIRFLOW_HOME=/tmp/airflow \
+            --env PYTHONPATH=/opt/airflow/dags \
+            --entrypoint python \
+            data-master-airflow:quality-gates \
+            -c '
+          from dags.banking_data_vault_pipeline_dag import dag
+
+          expected = {
+              "run_bronze",
+              "run_hubs",
+              "run_links",
+              "run_satellites",
+              "run_gold",
+              "run_data_vault_gate",
+              "run_masking_gate",
+              "run_evidence",
+          }
+          actual = {task.task_id for task in dag.tasks}
+          if actual != expected:
+              raise SystemExit(
+                  "DAG task contract mismatch: "
+                  + ",".join(sorted(actual.symmetric_difference(expected)))
+              )
+          print("AIRFLOW_DAG_IMPORT_STATUS=SUCCESS")
+          '

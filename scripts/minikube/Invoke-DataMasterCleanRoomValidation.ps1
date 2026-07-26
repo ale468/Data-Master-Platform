@@ -25,8 +25,65 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "DataMaster.Minikube.Common.ps1")
 
+function Assert-DataMasterFreshMinikubeProfile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetProfile
+    )
+
+    $profileListOutput = & minikube profile list --output=json 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "CLEAN_ROOM_PROFILE_PREFLIGHT_STATUS=BLOCKED_PROFILE_INVENTORY_UNAVAILABLE"
+        throw "Unable to inspect existing Minikube profiles before clean-room bootstrap."
+    }
+
+    try {
+        $profileNames = @(
+            ConvertFrom-DataMasterMinikubeProfileInventory `
+                -JsonText ($profileListOutput -join [Environment]::NewLine)
+        )
+    }
+    catch {
+        Write-Output "CLEAN_ROOM_PROFILE_PREFLIGHT_STATUS=BLOCKED_PROFILE_INVENTORY_INVALID"
+        throw "Minikube returned an invalid profile inventory; clean-room bootstrap was not started."
+    }
+
+    foreach ($profileName in $profileNames) {
+        if ($profileName -eq $TargetProfile) {
+            Write-Output "CLEAN_ROOM_PROFILE_PREFLIGHT_STATUS=BLOCKED_PREEXISTING_PROFILE"
+            Write-Output "CLEAN_ROOM_ISOLATION_STATUS=BLOCKED_PREEXISTING_PROFILE"
+            throw "Clean-room requires a new Minikube profile. Refusing to reuse preexisting profile '$TargetProfile'; it was not modified or deleted."
+        }
+    }
+
+    Write-Output "CLEAN_ROOM_PROFILE_PREFLIGHT_STATUS=PASS"
+}
+
+function Assert-DataMasterCleanWorktree {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot
+    )
+
+    $changes = @(
+        & git -C $RepositoryRoot status --porcelain --untracked-files=all 2>$null
+    )
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "CLEAN_ROOM_WORKTREE_STATUS=BLOCKED_STATUS_UNAVAILABLE"
+        throw "Unable to inspect the Git worktree before clean-room bootstrap."
+    }
+    if ($changes.Count -gt 0) {
+        Write-Output "CLEAN_ROOM_WORKTREE_STATUS=BLOCKED_DIRTY"
+        throw "Clean-room requires a clean Git worktree before any cluster mutation."
+    }
+    Write-Output "CLEAN_ROOM_WORKTREE_STATUS=PASS"
+}
+
 Assert-DataMasterSafeProfile -Profile $Profile
 $root = Get-DataMasterRepositoryRoot
+Assert-DataMasterCleanWorktree -RepositoryRoot $root
 if (-not $Revision) {
     $Revision = (& git -C $root branch --show-current).Trim()
 }
@@ -39,11 +96,21 @@ if ($LASTEXITCODE -ne 0 -or $resolvedRevision -ne $localHead) {
 & (Join-Path $PSScriptRoot "Test-DataMasterPrerequisites.ps1") `
     -MinimumCpuCount $Cpus -MinimumMemoryGiB ([math]::Ceiling($Memory / 1024))
 
-if (-not (Test-DataMasterRemoteRevision -RepoUrl $RepoUrl -Revision $Revision)) {
+Assert-DataMasterFreshMinikubeProfile -TargetProfile $Profile
+
+$remoteRevision = Resolve-DataMasterRemoteRevision `
+    -RepoUrl $RepoUrl -Revision $Revision
+if ([string]::IsNullOrWhiteSpace($remoteRevision)) {
     Write-Output "ARGOCD_REMOTE_REVISION_STATUS=BLOCKED_NOT_PUBLISHED"
     Write-Output "CLEAN_ROOM_GITOPS_STATUS=BLOCKED_REMOTE_REVISION_NOT_AVAILABLE"
     throw "Clean-room GitOps requires published revision '$Revision'. No push was performed."
 }
+if ($remoteRevision -ne $localHead) {
+    Write-Output "ARGOCD_REMOTE_REVISION_STATUS=BLOCKED_SHA_MISMATCH"
+    Write-Output "CLEAN_ROOM_GITOPS_STATUS=BLOCKED_REMOTE_REVISION_MISMATCH"
+    throw "Remote revision '$Revision' resolves to '$remoteRevision', not local HEAD '$localHead'. No cluster mutation was performed."
+}
+Write-Output "ARGOCD_REMOTE_REVISION_STATUS=PASS_SHA_MATCH"
 
 & (Join-Path $PSScriptRoot "New-DataMasterCluster.ps1") `
     -Profile $Profile -Cpus $Cpus -Memory $Memory -DiskSize $DiskSize -Driver $Driver

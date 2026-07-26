@@ -1,10 +1,25 @@
+import base64
+import os
 import re
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = REPO_ROOT / "scripts" / "minikube"
+POWERSHELL_EXECUTABLES = tuple(
+    dict.fromkeys(
+        executable
+        for executable in (
+            shutil.which("pwsh"),
+            shutil.which("powershell.exe"),
+            shutil.which("powershell"),
+        )
+        if executable
+    )
+)
 
 
 class MinikubeReproducibilityContractTests(unittest.TestCase):
@@ -34,7 +49,11 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             source = path.read_text(encoding="utf-8")
             self.assertIn("Set-StrictMode", source, path.name)
             self.assertIn('$ErrorActionPreference = "Stop"', source, path.name)
-            self.assertNotRegex(source, r"C:\\Users\\", path.name)
+            self.assertNotRegex(
+                source,
+                r"C:" + r"\\Users\\",
+                path.name,
+            )
         common = (SCRIPTS / "DataMaster.Minikube.Common.ps1").read_text(
             encoding="utf-8"
         )
@@ -65,6 +84,209 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         )
         self.assertIn("BLOCKED_NOT_PUBLISHED", deploy)
         self.assertIn("New-TemporaryFile", deploy)
+
+    def test_manual_gitops_sequence_binds_revision_and_image_tag_to_head(self):
+        guide = (REPO_ROOT / "infra" / "README-gitops.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("status --porcelain --untracked-files=all", guide)
+        self.assertIn('$resolvedRevision -ne $localHead', guide)
+        self.assertIn("Resolve-DataMasterRemoteRevision", guide)
+        self.assertIn("$remoteRevision -ne $localHead", guide)
+        self.assertIn(
+            "manifests e imagens nunca podem vir de SHAs diferentes",
+            guide,
+        )
+        self.assertIn(
+            '$tag = "git-" + $localHead.Substring(0, 12)',
+            guide,
+        )
+        self.assertLess(
+            guide.index('$resolvedRevision -ne $localHead'),
+            guide.index("$remoteRevision -ne $localHead"),
+        )
+        self.assertLess(
+            guide.index("$remoteRevision -ne $localHead"),
+            guide.index('$tag = "git-" + $localHead.Substring(0, 12)'),
+        )
+        self.assertLess(
+            guide.index('$tag = "git-" + $localHead.Substring(0, 12)'),
+            guide.index(
+                "-Revision $revision",
+                guide.index("Deploy-DataMasterGitOps.ps1"),
+            ),
+        )
+
+    def test_remote_revision_resolution_is_exact_and_fail_closed(self):
+        common = (SCRIPTS / "DataMaster.Minikube.Common.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function Resolve-DataMasterRemoteRevision", common)
+        self.assertIn("git ls-remote $RepoUrl", common)
+        self.assertIn('EndsWith("^{}")', common)
+        self.assertIn("$resolvedShas.Count -ne 1", common)
+        self.assertIn("Select-Object -ExpandProperty Sha -Unique", common)
+
+        clean_room = (
+            SCRIPTS / "Invoke-DataMasterCleanRoomValidation.ps1"
+        ).read_text(encoding="utf-8")
+        self.assertIn("BLOCKED_REMOTE_REVISION_MISMATCH", clean_room)
+        self.assertIn("$remoteRevision -ne $localHead", clean_room)
+        self.assertLess(
+            clean_room.index("$remoteRevision -ne $localHead"),
+            clean_room.index('"New-DataMasterCluster.ps1"'),
+        )
+
+    def test_clean_room_refuses_preexisting_profile_without_mutating_it(self):
+        common = (SCRIPTS / "DataMaster.Minikube.Common.ps1").read_text(
+            encoding="utf-8"
+        )
+        clean_room = (
+            SCRIPTS / "Invoke-DataMasterCleanRoomValidation.ps1"
+        ).read_text(encoding="utf-8")
+        self.assertIn("minikube profile list --output=json", clean_room)
+        self.assertIn(
+            "function ConvertFrom-DataMasterMinikubeProfileInventory",
+            common,
+        )
+        self.assertIn('foreach ($groupName in @("valid", "invalid"))', common)
+        self.assertIn("$groupProperty.Value -is [System.Array]", common)
+        self.assertIn(
+            "ConvertFrom-DataMasterMinikubeProfileInventory",
+            clean_room,
+        )
+        self.assertIn("BLOCKED_PROFILE_INVENTORY_INVALID", clean_room)
+        self.assertIn("BLOCKED_PREEXISTING_PROFILE", clean_room)
+        self.assertIn("it was not modified or deleted", clean_room)
+        self.assertNotIn("minikube delete", clean_room)
+        self.assertIn("CLEAN_ROOM_WORKTREE_STATUS=BLOCKED_DIRTY", clean_room)
+        self.assertLess(
+            clean_room.index(
+                "Assert-DataMasterCleanWorktree -RepositoryRoot $root"
+            ),
+            clean_room.index('"New-DataMasterCluster.ps1"'),
+        )
+        self.assertLess(
+            clean_room.index(
+                "Assert-DataMasterFreshMinikubeProfile -TargetProfile $Profile"
+            ),
+            clean_room.index('"New-DataMasterCluster.ps1"'),
+        )
+
+    def test_profile_inventory_parser_is_behaviorally_fail_closed(self):
+        self.assertTrue(
+            POWERSHELL_EXECUTABLES,
+            "PowerShell is required to validate the Minikube inventory parser.",
+        )
+        common_path = SCRIPTS / "DataMaster.Minikube.Common.ps1"
+        command = (
+            "[Console]::OutputEncoding = "
+            "New-Object System.Text.UTF8Encoding($false); "
+            "$OutputEncoding = [Console]::OutputEncoding; "
+            "Set-StrictMode -Version Latest; "
+            '$ErrorActionPreference = "Stop"; '
+            ". $env:DATAMASTER_COMMON_SCRIPT; "
+            "$jsonText = [System.Text.Encoding]::UTF8.GetString("
+            "[System.Convert]::FromBase64String("
+            "$env:DATAMASTER_PROFILE_INVENTORY_BASE64)); "
+            "try { "
+            "$names = @(ConvertFrom-DataMasterMinikubeProfileInventory "
+            "-JsonText $jsonText) "
+            "} catch { "
+            '[Console]::Error.Write("PROFILE_INVENTORY_REJECTED"); '
+            "exit 23 "
+            "}; "
+            "[Console]::Out.Write(($names -join [Environment]::NewLine))"
+        )
+
+        def run_parser(executable, json_text):
+            environment = os.environ.copy()
+            environment["DATAMASTER_COMMON_SCRIPT"] = str(common_path)
+            environment["DATAMASTER_PROFILE_INVENTORY_BASE64"] = (
+                base64.b64encode(json_text.encode("utf-8")).decode("ascii")
+            )
+            arguments = [
+                executable,
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+            ]
+            if os.name == "nt":
+                arguments.extend(["-ExecutionPolicy", "Bypass"])
+            arguments.extend(["-Command", command])
+            return subprocess.run(
+                arguments,
+                cwd=REPO_ROOT,
+                env=environment,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+
+        valid_fixtures = {
+            "empty groups": ('{"valid":[],"invalid":[]}', []),
+            "names in both groups": (
+                '{"valid":[{"Name":"running","Status":"OK"},'
+                '{"Name":"second"}],'
+                '"invalid":[{"Name":"stopped","Status":"Error"}]}',
+                ["running", "second", "stopped"],
+            ),
+        }
+        for executable in POWERSHELL_EXECUTABLES:
+            for fixture_name, (payload, expected_names) in valid_fixtures.items():
+                with self.subTest(
+                    executable=executable,
+                    fixture=fixture_name,
+                ):
+                    result = run_parser(executable, payload)
+                    self.assertEqual(
+                        result.returncode,
+                        0,
+                        result.stdout + result.stderr,
+                    )
+                    self.assertEqual(result.stdout.splitlines(), expected_names)
+
+        invalid_fixtures = {
+            "empty text": "",
+            "blank text": "  ",
+            "malformed JSON": "{",
+            "null root": "null",
+            "array root": "[]",
+            "scalar root": "7",
+            "empty object root": "{}",
+            "missing valid group": '{"invalid":[]}',
+            "missing invalid group": '{"valid":[]}',
+            "null valid group": '{"valid":null,"invalid":[]}',
+            "null invalid group": '{"valid":[],"invalid":null}',
+            "scalar valid group": '{"valid":{},"invalid":[]}',
+            "scalar invalid group": '{"valid":[],"invalid":{}}',
+            "null entry": '{"valid":[null],"invalid":[]}',
+            "string entry": '{"valid":["profile"],"invalid":[]}',
+            "numeric entry": '{"valid":[7],"invalid":[]}',
+            "missing name": '{"valid":[{}],"invalid":[]}',
+            "null name": '{"valid":[{"Name":null}],"invalid":[]}',
+            "numeric name": '{"valid":[{"Name":7}],"invalid":[]}',
+            "empty name": '{"valid":[{"Name":""}],"invalid":[]}',
+            "blank name": '{"valid":[{"Name":"  "}],"invalid":[]}',
+        }
+        for executable in POWERSHELL_EXECUTABLES:
+            for fixture_name, payload in invalid_fixtures.items():
+                with self.subTest(
+                    executable=executable,
+                    fixture=fixture_name,
+                ):
+                    result = run_parser(executable, payload)
+                    self.assertEqual(
+                        result.returncode,
+                        23,
+                        result.stdout + result.stderr,
+                    )
+                    self.assertEqual(
+                        result.stderr,
+                        "PROFILE_INVENTORY_REJECTED",
+                    )
 
     def test_crds_have_one_authority_and_spark_templates_are_not_auto_applied(self):
         operator = (

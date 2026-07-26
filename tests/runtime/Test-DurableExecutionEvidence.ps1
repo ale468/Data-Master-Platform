@@ -6,7 +6,8 @@ $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 
 function Copy-TestEvidence {
     param([Parameter(Mandatory = $true)][object]$Value)
-    return (($Value | ConvertTo-Json -Depth 20) | ConvertFrom-Json)
+    $json = $Value | ConvertTo-Json -Depth 20
+    return ConvertFrom-DataMasterJson -Json $json
 }
 
 function Assert-TestThrows {

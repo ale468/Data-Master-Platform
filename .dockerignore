@@ -8,6 +8,10 @@ __pycache__/
 .idea/
 venv/
 env/
+.env*
+build/
+*.pem
+*.key
 data/*
 !data/sample/
 !data/sample/**

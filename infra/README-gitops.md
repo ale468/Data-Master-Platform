@@ -1,367 +1,256 @@
-﻿# GitOps com ArgoCD + Minikube - Guia Completo
+# GitOps local com Argo CD e Minikube
 
-> **Referência histórica.** O fluxo operacional canônico é o Caminho B do
-> `README.md` raiz e os scripts em `scripts/minikube/`. Comandos e a seção
-> “Status Atual” abaixo preservam contexto anterior e não promovem o estado
-> presente da plataforma.
+Este guia descreve o caminho Kubernetes avançado do Data Master Platform. O
+objetivo é reproduzir, em um cluster Minikube isolado, a orquestração Airflow
+de `SparkApplication` pelo Spark Operator e a implantação declarativa dos
+serviços de apoio. Ele não é necessário para a validação pública rápida em
+`local-small`.
 
-Este guia documenta o processo completo de setup da infraestrutura de dados com ArgoCD, Minikube e Helm Charts. Permite que qualquer pessoa execute o projeto **Data-Master-Platform** localmente em sua máquina.
+O estado do cluster nunca deve ser inferido deste documento. Considere o
+ambiente pronto somente quando os scripts emitirem seus marcadores `PASS` na
+execução atual.
 
 ## Pré-requisitos
 
-Antes de começar, instale e configure as seguintes ferramentas:
+- Git;
+- Docker com engine Linux em execução;
+- Windows PowerShell 5.1 ou PowerShell 7+;
+- Minikube;
+- `kubectl`;
+- Helm 3;
+- pelo menos 4 CPUs e 11 GiB disponíveis para Docker no profile padrão.
 
-### 1. **Docker Desktop** (Obrigatório para Minikube)
-- **Download**: [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)
-- **Instalação no Windows**:
-  1. Baixe o instalador.
-  2. Execute como administrador.
-  3. Siga o assistente de instalação.
-  4. **Importante**: Inicie o Docker Desktop antes de usar Minikube.
-- **Verificação**: Abra o terminal e execute `docker --version`. Deve retornar a versão instalada.
+Valide antes de criar o cluster:
 
-### 2. **Git**
-- **Download**: [https://git-scm.com/downloads](https://git-scm.com/downloads)
-- **Instalação no Windows**: Siga o assistente padrão.
-- **Verificação**: `git --version`
-
-### 3. **kubectl** (CLI do Kubernetes)
-- **Download**: [https://kubernetes.io/docs/tasks/tools/](https://kubernetes.io/docs/tasks/tools/)
-- **Instalação no Windows**:
-  1. Baixe o binário `kubectl.exe`.
-  2. Adicione ao PATH do sistema (veja seção de Troubleshooting).
-- **Verificação**: `kubectl version --client`
-
-### 4. **Minikube** (Cluster Kubernetes local)
-- **Download**: [https://minikube.sigs.k8s.io/docs/start/](https://minikube.sigs.k8s.io/docs/start/)
-- **Instalação no Windows**:
-  1. Baixe o instalador `.exe`.
-  2. Execute e siga o assistente.
-- **Verificação**: `minikube version`
-
-### 5. **Helm** (Gerenciador de pacotes Kubernetes)
-- **Download**: [https://helm.sh/docs/intro/install/](https://helm.sh/docs/intro/install/)
-- **Instalação no Windows**:
-  1. Baixe o binário `helm.exe`.
-  2. Adicione ao PATH (veja Troubleshooting).
-- **Verificação**: `helm version`
-
-### 6. **SSH para GitHub** (Opcional, mas recomendado)
-- Gere uma chave SSH: `ssh-keygen -t rsa -b 4096 -C "seu-email@exemplo.com"`
-- Adicione a chave pública (`id_rsa.pub`) em: [https://github.com/settings/keys](https://github.com/settings/keys)
-- **Verificação**: `ssh -T git@github.com` (deve conectar sem senha)
-
-## Etapa 1: Clonar o Repositório
-
-```bash
-git clone git@github.com:ale468/Data-Master-Platform.git
-cd Data-Master-Platform
+```powershell
+.\scripts\minikube\Test-DataMasterPrerequisites.ps1
 ```
 
-## Etapa 2: Iniciar o Minikube
+O script verifica comandos, engine Docker, CPU, memória e portas locais. Uma
+falha de pré-requisito deve ser corrigida antes de continuar.
 
-**Importante**: Certifique-se de que o Docker Desktop está rodando!
+## Caminho recomendado: clean room
 
-```bash
-minikube start --driver=docker
+O comando abaixo exige uma revisão já publicada e acessível pelo Argo CD. Ele
+não faz push e recusa uma revisão remota ausente ou que não aponte para o
+`HEAD` local exato.
+
+```powershell
+.\scripts\minikube\Invoke-DataMasterCleanRoomValidation.ps1 `
+  -RepoUrl "https://github.com/ale468/Data-Master-Platform.git" `
+  -Revision "<branch-ou-commit-publicado>"
 ```
 
-- **Verificação**: `minikube status` deve mostrar "Running".
-- **Se der erro**: Veja a seção de Troubleshooting abaixo.
+O fluxo:
 
-## Etapa 3: Instalar o ArgoCD
+1. confirma árvore Git limpa e que a revisão local e remota resolve para o
+   mesmo `HEAD`;
+2. valida os pré-requisitos;
+3. cria um profile Minikube isolado;
+4. constrói imagens Airflow e Spark com tag imutável derivada do commit;
+5. importa as imagens e dependências no runtime Minikube;
+6. gera secrets locais ou consome valores fornecidos pelo operador;
+7. instala a versão fixada do chart Argo CD;
+8. renderiza e aplica o app-of-apps para a revisão informada;
+9. aguarda Applications, deployments, serviços e PVCs;
+10. executa integração Spark, end-to-end Airflow e quality gates;
+11. verifica os port-forwards e o restart controlado do MinIO.
 
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+O aceite é a presença simultânea de:
+
+```text
+CLEAN_ROOM_ISOLATION_STATUS=PASS
+CLEAN_ROOM_RESTART_STATUS=PASS
+CLEAN_ROOM_GITOPS_STATUS=PASS
+CLEAN_ROOM_REPRODUCIBILITY_STATUS=PASS
 ```
 
-- **Aguarde**: Pode levar 1-2 minutos para os pods ficarem prontos.
-- **Verificação**: `kubectl get pods -n argocd`
+Se a revisão ainda não estiver publicada, o resultado correto é bloqueio; não
+substitua a revisão por `main` apenas para contornar o gate.
 
-## Etapa 4: Acessar a Interface do ArgoCD
+## Sequência manual para diagnóstico
 
-```bash
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+Use esta sequência somente quando precisar isolar uma etapa do clean room.
+Mantenha o mesmo profile, revisão e tag de imagem em todos os comandos.
+A sequência falha se `$revision` não resolver exatamente para o `HEAD` local;
+manifests e imagens nunca podem vir de SHAs diferentes.
+
+```powershell
+$profile = "data-master-repro-test"
+$revision = "<branch-ou-commit-publicado>"
+$repoUrl = "https://github.com/ale468/Data-Master-Platform.git"
+$common = ".\scripts\minikube\DataMaster.Minikube.Common.ps1"
+. $common
+$worktreeChanges = @(& git status --porcelain --untracked-files=all)
+if ($LASTEXITCODE -ne 0) {
+  throw "Não foi possível inspecionar a árvore Git."
+}
+if ($worktreeChanges.Count -gt 0) {
+  throw "O clean room exige árvore Git limpa antes de criar o profile."
+}
+$localHead = (& git rev-parse HEAD).Trim()
+$resolvedRevisionOutput = & git rev-parse "$revision^{commit}" 2>$null
+if ($LASTEXITCODE -ne 0) {
+  throw "Não foi possível resolver a revisão '$revision' localmente."
+}
+$resolvedRevision = ($resolvedRevisionOutput | Select-Object -Last 1).Trim()
+if ($resolvedRevision -ne $localHead) {
+  throw "A revisão '$revision' deve resolver exatamente para o HEAD local '$localHead'. Manifests e imagens não podem vir de SHAs diferentes."
+}
+$remoteRevision = Resolve-DataMasterRemoteRevision `
+  -RepoUrl $repoUrl `
+  -Revision $revision
+if ([string]::IsNullOrWhiteSpace($remoteRevision)) {
+  throw "A revisão '$revision' não está publicada em um ref remoto verificável."
+}
+if ($remoteRevision -ne $localHead) {
+  throw "A revisão remota '$revision' resolve para '$remoteRevision', não para o HEAD local '$localHead'."
+}
+$tag = "git-" + $localHead.Substring(0, 12)
+
+.\scripts\minikube\New-DataMasterCluster.ps1 -Profile $profile
+.\scripts\minikube\Build-DataMasterImages.ps1 -Tag $tag
+.\scripts\minikube\Import-DataMasterImages.ps1 `
+  -Profile $profile `
+  -Tag $tag `
+  -PreloadRuntimeDependencies
+.\scripts\minikube\Initialize-DataMasterSecrets.ps1 -Profile $profile
+.\scripts\minikube\Install-DataMasterArgoCD.ps1 -Profile $profile
+.\scripts\minikube\Deploy-DataMasterGitOps.ps1 `
+  -Profile $profile `
+  -RepoUrl $repoUrl `
+  -Revision $revision `
+  -ImageTag $tag
+.\scripts\minikube\Wait-DataMasterReady.ps1 `
+  -Profile $profile `
+  -Revision $revision
+.\scripts\minikube\Invoke-SparkIntegrationTest.ps1 `
+  -Profile $profile `
+  -ImageTag $tag
 ```
 
-- **Acesse**: [http://localhost:8080](http://localhost:8080)
-- **Usuário**: `admin`
-- **Senha**:
-  ```bash
-  kubectl -n argocd get secret argocd-initial-admin-secret \
-    -o jsonpath="{.data.password}" | base64 -d
-  ```
+O preflight recusa uma árvore Git suja antes de criar o profile; o
+`Build-DataMasterImages.ps1` repete essa defesa antes do build. Isso impede que
+uma tentativa inválida deixe cluster residual e que uma tag baseada no commit
+descreva conteúdo diferente. Use `-AllowDirty` somente em diagnóstico local,
+nunca como evidência reproduzível.
 
-## Etapa 5: Registrar Repositório Git no ArgoCD
+## Secrets e acesso local
 
-**Nota Importante**: Devido a limitações de autenticação, recomendamos usar HTTPS para repositórios acessíveis pelo ambiente local. O ArgoCD funciona melhor com HTTPS do que SSH neste setup.
+`Initialize-DataMasterSecrets.ps1` não recomenda credenciais fixas. Quando as
+variáveis abaixo não existem, ele gera valores aleatórios para o cluster
+efêmero e os grava como Kubernetes Secrets:
 
-Via interface web (recomendado):
-1. Acesse http://localhost:8080 (porta 8080 ou 8081)
-2. Login: admin / senha do passo anterior
-3. Vá em "Settings" → "Repositories"
-4. Clique "Connect Repo"
-5. Selecione "Via HTTPS" e insira: `https://github.com/ale468/Data-Master-Platform.git`
-6. Deixe campos de autenticação vazios quando o ambiente não exigir credenciais
+- `DATA_MASTER_MINIO_ACCESS_KEY`;
+- `DATA_MASTER_MINIO_SECRET_KEY`;
+- `DATA_MASTER_POSTGRES_PASSWORD`;
+- `DATA_MASTER_AIRFLOW_PASSWORD`;
+- `DATA_MASTER_JUPYTER_TOKEN`.
 
-Via CLI (opcional):
-```bash
-argocd login localhost:8081 --username admin --password <SENHA-ACIMA>
-# Para repositorios HTTPS acessiveis pelo cluster, geralmente nao precisa registrar explicitamente
+Se precisar fornecer valores controlados, defina-os no processo antes da
+execução e não os grave no Git, em logs, issues ou artifacts. Os manifests
+consomem os Secrets por referência; eles não devem conter credenciais em texto.
+
+Inicie os acessos locais somente depois do readiness:
+
+```powershell
+.\scripts\minikube\Start-DataMasterPortForwards.ps1 -Profile $profile
 ```
 
-## Etapa 6: Aplicar App-of-Apps (Aplicação Raiz)
+Endpoints:
 
-```bash
-kubectl apply -f infra/argocd/applications/root/app-of-apps.yaml
+| Serviço | URL local |
+|---|---|
+| Argo CD | `https://localhost:8080` |
+| Airflow | `http://localhost:8082` |
+| MinIO API | `http://localhost:9000` |
+| MinIO Console | `http://localhost:9001` |
+| Jupyter | `http://localhost:8888` |
+
+Pare os processos de port-forward quando terminar:
+
+```powershell
+.\scripts\minikube\Stop-DataMasterPortForwards.ps1 -Profile $profile
 ```
 
-Esta aplicação raiz gerencia automaticamente todas as outras aplicações com a seguinte ordem de implantação:
+## Ordem declarativa atual
 
-1. **Wave 0**: Spark Operator (CRDs + Controller)
-2. **Wave 1**: MinIO (Armazenamento)
-3. **Wave 2**: Jupyter Notebook (Ambiente de desenvolvimento)
-4. **Wave 3**: Spark Jobs (Workloads de exemplo)
+O chart `infra/argocd/applications` renderiza sete Applications filhas. A
+Application raiz é aplicada separadamente pelo script de deploy.
 
-## Etapa 7: Verificar Sincronização Automática
+| Sync wave | Componentes |
+|---:|---|
+| 0 | Spark Operator |
+| 1 | PostgreSQL Metastore, Hive Metastore e MinIO |
+| 2 | Jupyter |
+| 3 | Airflow e RBAC dos Spark jobs |
 
-O ArgoCD irá sincronizar automaticamente todas as aplicações na ordem correta. Monitore o progresso:
+As cargas usam os namespaces `argocd`, `spark-operator` e `data-platform`.
+Não use namespaces históricos como `minio`, `jupyter` ou `spark-jobs` nos
+comandos de inspeção.
 
-```bash
-# Ver todas as aplicações
-kubectl get applications -n argocd
+O app `spark-jobs` sincroniza o RBAC necessário. Os objetos
+`SparkApplication` são submetidos dinamicamente pelos testes de integração ou
+pelas tasks do Airflow; não ficam instalados permanentemente pelo app-of-apps.
 
-# Ver status detalhado
-argocd app list
+## Verificação e troubleshooting
 
-# Ver logs de sincronização (se necessário)
-kubectl logs -n argocd deployment/argocd-application-controller
+Comece sempre por observações read-only:
+
+```powershell
+minikube status -p $profile
+kubectl --context $profile get nodes
+kubectl --context $profile get pods -A
+kubectl --context $profile get applications.argoproj.io -n argocd
+kubectl --context $profile get sparkapplications -n data-platform
+kubectl --context $profile get pvc -n data-platform
 ```
 
-## Etapa 8: Verificar Recursos Implantados
+Para um componente não pronto:
 
-```bash
-# Spark Operator
-kubectl get pods -n spark-operator
-kubectl get crd | grep spark
-
-# MinIO
-kubectl get pods -n minio
-kubectl get pvc -n minio
-
-# Jupyter
-kubectl get pods -n jupyter
-
-# Spark Jobs
-kubectl get pods -n spark-jobs
-kubectl get sparkapplication -n spark-jobs
+```powershell
+kubectl --context $profile describe pod <pod> -n <namespace>
+kubectl --context $profile logs <pod> -n <namespace>
+kubectl --context $profile describe application <application> -n argocd
 ```
 
-```bash
-kubectl get pods -n spark-operator
-kubectl get pods -n spark-jobs
-kubectl get pods -n jupyter
-kubectl get sparkapplication -n spark-jobs
+Problemas frequentes:
+
+- Docker indisponível: inicie a engine Linux e repita o prerequisite check.
+- CPU ou memória insuficiente: ajuste os recursos do Docker ou informe valores
+  menores somente se estiver aceitando uma execução fora do profile padrão.
+- `ErrImagePull`: confirme que a tag imutável foi construída e importada para
+  o mesmo profile Minikube.
+- Revisão remota bloqueada: publique explicitamente a branch/commit autorizado
+  antes do deploy; o script não realiza esse push.
+- Porta ocupada: pare o processo correspondente ou execute
+  `Stop-DataMasterPortForwards.ps1` para o profile correto.
+- Application fora de sync: inspecione a condição e a revisão renderizada antes
+  de qualquer mutação.
+
+Não use limpeza global de Docker como procedimento de troubleshooting. Ela
+atinge imagens, caches e volumes fora deste projeto.
+
+## Remoção explícita do cluster isolado
+
+A remoção é destrutiva e exige profile nomeado e confirmação:
+
+```powershell
+.\scripts\minikube\Remove-DataMasterCluster.ps1 `
+  -Profile $profile `
+  -ConfirmDeletion
 ```
 
-## Etapa 10: Executar PySpark Interativo (Databricks-like)
+O script rejeita profiles protegidos. Não use comandos de remoção sem confirmar
+que o alvo é o profile isolado criado para esta validação.
 
-Para uma experiência similar ao Databricks:
+## Limites
 
-```bash
-kubectl run pyspark-shell --image=apache/spark-py:v3.3.1 --rm -it -- /opt/spark/bin/pyspark
-```
-
-**Exemplos de comandos no shell PySpark:**
-```python
-# Criar DataFrame
-df = spark.createDataFrame([("Alice", 25), ("Bob", 30)], ["name", "age"])
-df.show()
-
-# Filtrar dados
-df.filter(df.age > 26).show()
-
-# SQL
-df.createOrReplaceTempView("people")
-spark.sql("SELECT * FROM people WHERE age > 28").show()
-```
-
-## Etapa 11: Acessar Jupyter Notebook
-
-```bash
-kubectl port-forward svc/jupyter -n jupyter 8888:8888
-```
-
-- **Acesse**: [http://localhost:8888](http://localhost:8888)
-- **Token**: `spark123`
-- **Interface**: Use o token para fazer login e começar a trabalhar com notebooks PySpark.
-
-## Etapa 9: Acessar Serviços
-
-- **ArgoCD UI**: `kubectl port-forward svc/argocd-server -n argocd 8080:443`
-- **MinIO Console**: `kubectl port-forward svc/minio -n minio 9001:9001` (usuário: minio, senha: minio123)
-- **MinIO API**: `kubectl port-forward svc/minio -n minio 9000:9000`
-- **Jupyter Notebook**: `kubectl port-forward svc/jupyter -n jupyter 8888:8888`
-- **Spark UI** (se disponível): `kubectl port-forward svc/spark -n spark-operator 8088:8080`
-
-## Limitações e Decisões Técnicas
-
-### ArgoCD e Autenticação Git
-- **Status**: **Resolvido** - Todas as aplicações agora usam HTTPS e estão integradas ao ArgoCD
-- **Solução implementada**: App-of-apps com sync waves garante ordem de implantação
-- **Benefício**: Deploy completamente automatizado e versionado
-
-### Spark Operator
-- **Status**: **Corrigido** - Chart real implementado com CRDs, RBAC e controller
-- **Melhorias**: ServiceAccount, ClusterRole, probes de saúde
-- **Resultado**: Spark Operator funcional com CRDs instaladas
-
-### Jupyter em Kubernetes
-- **Status**: **Corrigido** - Namespace dinâmico, probes adicionadas, labels padronizadas
-- **Melhorias**: Liveness/Readiness probes, resources configuráveis
-- **Resultado**: Chart reutilizável e resiliente
-
-### MinIO Integration
-- **Status**: **Implementado** - Chart completo com PVC, probes e segurança básica
-- **Melhorias**: Persistência via PVC, serviceAccount, securityContext
-- **Resultado**: MinIO integrado ao fluxo GitOps com armazenamento persistente
-
-### Dependências entre Aplicações
-- **Status**: **Implementado** - Sync waves garantem ordem: Operator → MinIO → Jupyter → Jobs
-- **Benefício**: Deploy previsível e sem conflitos de dependência
-
-### Recursos do Minikube
-- **Limitação**: Ambiente local tem recursos limitados
-- **Otimização**: Configurações de CPU/memory ajustadas para estabilidade
-
-## Troubleshooting (Problemas Comuns)
-
-### 1. **Erro: "minikube start" falha com "docker daemon not running"**
-- **Causa**: Docker Desktop não está iniciado.
-- **Solução**:
-  1. Abra o Docker Desktop.
-  2. Aguarde até aparecer "Docker is running".
-  3. Execute `minikube start --driver=docker` novamente.
-
-### 2. **Erro: "kubectl: command not found"**
-- **Causa**: kubectl não está no PATH.
-- **Solução (Windows)**:
-  1. Baixe `kubectl.exe` de [https://kubernetes.io/docs/tasks/tools/](https://kubernetes.io/docs/tasks/tools/).
-  2. Mova o arquivo para `C:\Windows\System32` ou adicione ao PATH:
-     - Pressione Win + X → "Configurações do Sistema" → "Sobre" → "Configurações avançadas do sistema" → "Variáveis de ambiente".
-     - Em "Variáveis do sistema", edite "Path" e adicione o caminho da pasta do kubectl (ex.: `C:\kubectl`).
-  3. Reinicie o terminal e verifique: `kubectl version --client`.
-
-### 3. **Erro: "helm: command not found"**
-- Mesmo problema do kubectl. Adicione ao PATH conforme acima.
-
-### 4. **Erro: "etcdserver: request timed out"**
-- **Causa**: Cluster sobrecarregado (muitos pods problemáticos).
-- **Solução**:
-  1. Delete deployments problemáticos: `kubectl delete deployment <nome> -n <namespace>`
-  2. Limpe pods: `kubectl delete pods --field-selector=status.phase=Failed`
-  3. Reinicie Minikube: `minikube stop && minikube start --driver=docker`
-
-### 5. **Erro: "Unable to connect to the server: EOF"**
-- **Causa**: Minikube não está totalmente iniciado.
-- **Solução**:
-  1. Verifique status: `minikube status`
-  2. Se apiserver parado: `minikube start --driver=docker`
-  3. Aguarde e teste: `kubectl get nodes`
-
-### 6. **Pods ficam em "Pending" ou "ErrImagePull"**
-- Verifique se o Docker está rodando (veja erro 1).
-- Execute `minikube image load <imagem>` se necessário.
-- Verifique conectividade: `docker pull hello-world`.
-
-### 7. **ArgoCD não sincroniza ou "repo not found"**
-- Verifique se a chave SSH está configurada: `ssh -T git@github.com`.
-- No ArgoCD, certifique-se de que o repositório foi adicionado corretamente.
-- Execute `argocd app get <app-name>` para detalhes do erro.
-
-### 8. **Spark Operator não processa aplicações**
-- Verifique se o Operator está rodando: `kubectl get pods -n spark-operator`
-- Verifique logs: `kubectl logs -n spark-operator deployment/spark-operator-controller`
-- Certifique-se de que a ServiceAccount existe no namespace correto.
-
-### 9. **Problemas Gerais**
-- **Logs do Minikube**: `minikube logs`
-- **Reiniciar Minikube**: `minikube delete && minikube start --driver=docker`
-- **Ver status completo**: `minikube status`
-- **Limpar cache**: `docker system prune -a` (cuidado, remove tudo)
-
-### 10. **Validação da Instalação Completa**
-Execute estes comandos para verificar se tudo está funcionando:
-
-```bash
-# Verificar cluster
-kubectl get nodes
-kubectl get pods -A
-
-# Verificar ArgoCD
-kubectl get pods -n argocd
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-
-# Verificar Spark Operator
-kubectl get pods -n spark-operator
-kubectl get sparkapplications -A
-
-# Verificar Jupyter
-kubectl get pods -n jupyter
-kubectl port-forward svc/jupyter -n jupyter 8888:8888
-
-# Testar PySpark (opcional)
-kubectl exec -it deployment/jupyter -n jupyter -- /bin/bash
-# Dentro do container: python -c "import pyspark; print('PySpark OK')"
-```
-
-## Recursos Adicionais
-
-- [Documentação ArgoCD](https://argo-cd.readthedocs.io/)
-- [Documentação Minikube](https://minikube.sigs.k8s.io/docs/)
-- [Documentação Helm](https://helm.sh/docs/)
-- [Documentação Apache Spark](https://spark.apache.org/docs/latest/)
-
-## Próximos Passos e Melhorias
-
-### Funcionalidades Planejadas
-- **MinIO Integration**: Armazenamento de dados distribuído
-- **Spark Jobs Avançados**: Workflows complexos com múltiplas etapas
-- **Monitoring**: Métricas e dashboards com Prometheus/Grafana
-- **CI/CD Pipeline**: Automação completa de deploy
-
-### Melhorias Técnicas
-- **ArgoCD Full GitOps**: Resolver autenticação para todos componentes
-- **Security**: Configurações de RBAC e secrets management
-- **Scalability**: Configurações para clusters maiores
-- **Backup/Restore**: Estratégias para dados persistentes
-
-### Como Contribuir
-1. Teste as configurações atuais
-2. Reporte bugs ou melhorias via Issues
-3. Proponha mudanças via Pull Requests
-4. Documente novas funcionalidades
-
----
-
-**Status Atual do Projeto:**
-- Minikube + Kubernetes funcionando
-- ArgoCD instalado e configurado (com app-of-apps)
-- Spark Operator real instalado (com CRDs e RBAC)
-- MinIO integrado ao GitOps (com PVC e probes)
-- Jupyter Notebook corrigido (namespace dinâmico + probes)
-- PySpark interativo funcionando
-- Jobs Spark com RBAC adequado
-- Sync waves implementados para ordem de deploy
-- Charts padronizados com helpers e labels
-
-**Arquitetura Final:**
-1. **App-of-Apps** gerencia todas as aplicações
-2. **Sync Waves** garantem ordem: Spark Operator → MinIO → Jupyter → Spark Jobs
-3. **Charts padronizados** com helpers, probes e segurança
-4. **RBAC adequado** para Spark jobs
-5. **Persistência** via PVC para MinIO
-6. **Comunicação interna** validada entre serviços
-
-**Dúvidas?** Abra uma issue no repositório ou consulte a documentação principal em `README.md`.
+- O clean room é uma validação local avançada, não operação produtiva.
+- O Spark Operator demonstra separação entre orquestração e processamento; não
+  prova autoscaling, alta disponibilidade ou escala cloud.
+- Secrets Kubernetes gerados localmente não equivalem a secret manager
+  produtivo.
+- O estado live precisa ser revalidado em cada execução.
+- A arquitetura alvo pode evoluir para infraestrutura distribuída, mas nenhuma
+  evolução é considerada implementada sem código, gate e evidência próprios.
