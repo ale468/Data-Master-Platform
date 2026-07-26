@@ -135,6 +135,51 @@ function Set-DataMasterKubernetesSecret {
     }
 }
 
+function ConvertFrom-DataMasterMinikubeProfileInventory {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$JsonText
+    )
+
+    try {
+        $profileList = $JsonText | ConvertFrom-Json
+    }
+    catch {
+        throw "Minikube profile inventory is not valid JSON."
+    }
+    if ($null -eq $profileList) {
+        throw "Minikube profile inventory is empty."
+    }
+
+    $profileNames = @()
+    foreach ($groupName in @("valid", "invalid")) {
+        $groupProperty = $profileList.PSObject.Properties[$groupName]
+        if ($null -eq $groupProperty) {
+            throw "Minikube profile inventory is missing group '$groupName'."
+        }
+        if (-not ($groupProperty.Value -is [System.Array])) {
+            throw "Minikube profile group '$groupName' must be an array."
+        }
+
+        foreach ($entry in @($groupProperty.Value)) {
+            if ($null -eq $entry) {
+                throw "Minikube profile group '$groupName' contains a null entry."
+            }
+            $nameProperty = $entry.PSObject.Properties["Name"]
+            if (
+                $null -eq $nameProperty -or
+                -not ($nameProperty.Value -is [string]) -or
+                [string]::IsNullOrWhiteSpace([string]$nameProperty.Value)
+            ) {
+                throw "Minikube profile group '$groupName' contains an entry without a valid Name."
+            }
+            $profileNames += [string]$nameProperty.Value
+        }
+    }
+    return [string[]]$profileNames
+}
+
 function Resolve-DataMasterRemoteRevision {
     [CmdletBinding()]
     param(

@@ -39,35 +39,18 @@ function Assert-DataMasterFreshMinikubeProfile {
     }
 
     try {
-        $profileList = ($profileListOutput -join [Environment]::NewLine) |
-            ConvertFrom-Json
-        if ($null -eq $profileList) {
-            throw "Minikube profile inventory was empty."
-        }
-
-        $profileEntries = @()
-        $recognizedGroupCount = 0
-        foreach ($groupName in @("valid", "invalid")) {
-            $groupProperty = $profileList.PSObject.Properties[$groupName]
-            if ($null -ne $groupProperty) {
-                if ($null -eq $groupProperty.Value) {
-                    throw "Minikube profile group '$groupName' was null."
-                }
-                $recognizedGroupCount += 1
-                $profileEntries += @($groupProperty.Value)
-            }
-        }
-        if ($recognizedGroupCount -eq 0) {
-            throw "Minikube profile inventory had no recognized groups."
-        }
+        $profileNames = @(
+            ConvertFrom-DataMasterMinikubeProfileInventory `
+                -JsonText ($profileListOutput -join [Environment]::NewLine)
+        )
     }
     catch {
         Write-Output "CLEAN_ROOM_PROFILE_PREFLIGHT_STATUS=BLOCKED_PROFILE_INVENTORY_INVALID"
         throw "Minikube returned an invalid profile inventory; clean-room bootstrap was not started."
     }
 
-    foreach ($entry in $profileEntries) {
-        if ($null -ne $entry -and [string]$entry.Name -eq $TargetProfile) {
+    foreach ($profileName in $profileNames) {
+        if ($profileName -eq $TargetProfile) {
             Write-Output "CLEAN_ROOM_PROFILE_PREFLIGHT_STATUS=BLOCKED_PREEXISTING_PROFILE"
             Write-Output "CLEAN_ROOM_ISOLATION_STATUS=BLOCKED_PREEXISTING_PROFILE"
             throw "Clean-room requires a new Minikube profile. Refusing to reuse preexisting profile '$TargetProfile'; it was not modified or deleted."

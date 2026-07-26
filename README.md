@@ -215,6 +215,10 @@ medição; os números não são SLA, sizing produtivo ou previsão de cloud.
 | GitOps local | Scripts Minikube, charts Helm e app-of-apps Argo CD | `helm lint/template` na CI e [guia operacional](infra/README-gitops.md) |
 | Qualidade pública | Workflows separados por tipo de gate | Gates fail-closed, permissões somente leitura e builds sem push; branch protection não foi verificada |
 
+O orquestrador clean-room só aceita um profile Minikube alvo novo e ausente.
+Se o profile já existir, o preflight bloqueia a execução antes de qualquer
+criação de cluster e não altera nem remove esse profile.
+
 ### Estrutura principal
 
 ```text
