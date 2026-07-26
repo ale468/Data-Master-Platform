@@ -70,6 +70,83 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertIn("BLOCKED_NOT_PUBLISHED", deploy)
         self.assertIn("New-TemporaryFile", deploy)
 
+    def test_manual_gitops_sequence_binds_revision_and_image_tag_to_head(self):
+        guide = (REPO_ROOT / "infra" / "README-gitops.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("status --porcelain --untracked-files=all", guide)
+        self.assertIn('$resolvedRevision -ne $localHead', guide)
+        self.assertIn("Resolve-DataMasterRemoteRevision", guide)
+        self.assertIn("$remoteRevision -ne $localHead", guide)
+        self.assertIn(
+            "manifests e imagens nunca podem vir de SHAs diferentes",
+            guide,
+        )
+        self.assertIn(
+            '$tag = "git-" + $localHead.Substring(0, 12)',
+            guide,
+        )
+        self.assertLess(
+            guide.index('$resolvedRevision -ne $localHead'),
+            guide.index("$remoteRevision -ne $localHead"),
+        )
+        self.assertLess(
+            guide.index("$remoteRevision -ne $localHead"),
+            guide.index('$tag = "git-" + $localHead.Substring(0, 12)'),
+        )
+        self.assertLess(
+            guide.index('$tag = "git-" + $localHead.Substring(0, 12)'),
+            guide.index(
+                "-Revision $revision",
+                guide.index("Deploy-DataMasterGitOps.ps1"),
+            ),
+        )
+
+    def test_remote_revision_resolution_is_exact_and_fail_closed(self):
+        common = (SCRIPTS / "DataMaster.Minikube.Common.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function Resolve-DataMasterRemoteRevision", common)
+        self.assertIn("git ls-remote $RepoUrl", common)
+        self.assertIn('EndsWith("^{}")', common)
+        self.assertIn("$resolvedShas.Count -ne 1", common)
+        self.assertIn("Select-Object -ExpandProperty Sha -Unique", common)
+
+        clean_room = (
+            SCRIPTS / "Invoke-DataMasterCleanRoomValidation.ps1"
+        ).read_text(encoding="utf-8")
+        self.assertIn("BLOCKED_REMOTE_REVISION_MISMATCH", clean_room)
+        self.assertIn("$remoteRevision -ne $localHead", clean_room)
+        self.assertLess(
+            clean_room.index("$remoteRevision -ne $localHead"),
+            clean_room.index('"New-DataMasterCluster.ps1"'),
+        )
+
+    def test_clean_room_refuses_preexisting_profile_without_mutating_it(self):
+        clean_room = (
+            SCRIPTS / "Invoke-DataMasterCleanRoomValidation.ps1"
+        ).read_text(encoding="utf-8")
+        self.assertIn("minikube profile list --output=json", clean_room)
+        self.assertIn("$null -eq $profileList", clean_room)
+        self.assertIn("BLOCKED_PROFILE_INVENTORY_INVALID", clean_room)
+        self.assertIn("BLOCKED_PREEXISTING_PROFILE", clean_room)
+        self.assertIn("it was not modified or deleted", clean_room)
+        self.assertIn('foreach ($groupName in @("valid", "invalid"))', clean_room)
+        self.assertNotIn("minikube delete", clean_room)
+        self.assertIn("CLEAN_ROOM_WORKTREE_STATUS=BLOCKED_DIRTY", clean_room)
+        self.assertLess(
+            clean_room.index(
+                "Assert-DataMasterCleanWorktree -RepositoryRoot $root"
+            ),
+            clean_room.index('"New-DataMasterCluster.ps1"'),
+        )
+        self.assertLess(
+            clean_room.index(
+                "Assert-DataMasterFreshMinikubeProfile -TargetProfile $Profile"
+            ),
+            clean_room.index('"New-DataMasterCluster.ps1"'),
+        )
+
     def test_crds_have_one_authority_and_spark_templates_are_not_auto_applied(self):
         operator = (
             REPO_ROOT

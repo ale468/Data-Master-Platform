@@ -135,6 +135,93 @@ function Set-DataMasterKubernetesSecret {
     }
 }
 
+function Resolve-DataMasterRemoteRevision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Revision
+    )
+
+    $result = @(& git ls-remote $RepoUrl 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    $remoteRefs = @()
+    foreach ($line in $result) {
+        $parts = [string]$line -split "\s+", 2
+        if (
+            $parts.Count -eq 2 -and
+            $parts[0] -match "^[0-9a-fA-F]{40}$"
+        ) {
+            $remoteRefs += [pscustomobject]@{
+                Sha = $parts[0].ToLowerInvariant()
+                Ref = $parts[1]
+            }
+        }
+    }
+
+    # An annotated tag advertises both its tag object and its peeled commit.
+    # Only the peeled commit can be compared with a local commit SHA.
+    $effectiveRefs = @()
+    foreach ($remoteRef in $remoteRefs) {
+        $peeledRef = "$($remoteRef.Ref)^{}"
+        $hasPeeledCommit = @(
+            $remoteRefs | Where-Object { $_.Ref -eq $peeledRef }
+        ).Count -gt 0
+        if (
+            $remoteRef.Ref.StartsWith("refs/tags/") -and
+            -not $remoteRef.Ref.EndsWith("^{}") -and
+            $hasPeeledCommit
+        ) {
+            continue
+        }
+        $effectiveRefs += $remoteRef
+    }
+
+    if ($Revision -match "^[0-9a-fA-F]{7,40}$") {
+        $revisionPrefix = $Revision.ToLowerInvariant()
+        $matches = @(
+            $effectiveRefs |
+                Where-Object { $_.Sha.StartsWith($revisionPrefix) }
+        )
+    }
+    else {
+        if ($Revision.StartsWith("refs/heads/")) {
+            $targetRefs = @($Revision)
+        }
+        elseif ($Revision.StartsWith("refs/tags/")) {
+            $targetRefs = @($Revision, "$Revision^{}")
+        }
+        elseif ($Revision -eq "HEAD") {
+            $targetRefs = @("HEAD")
+        }
+        else {
+            $targetRefs = @(
+                "refs/heads/$Revision",
+                "refs/tags/$Revision",
+                "refs/tags/$Revision^{}"
+            )
+        }
+        $matches = @(
+            $effectiveRefs |
+                Where-Object { $targetRefs -contains $_.Ref }
+        )
+    }
+
+    $resolvedShas = @(
+        $matches |
+            Select-Object -ExpandProperty Sha -Unique
+    )
+    if ($resolvedShas.Count -ne 1) {
+        return $null
+    }
+    return [string]$resolvedShas[0]
+}
+
 function Test-DataMasterRemoteRevision {
     [CmdletBinding()]
     param(
@@ -145,27 +232,9 @@ function Test-DataMasterRemoteRevision {
         [string]$Revision
     )
 
-    $candidates = @(
-        $Revision,
-        "refs/heads/$Revision",
-        "refs/tags/$Revision"
-    )
-    $result = & git ls-remote $RepoUrl @candidates 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        return $false
-    }
-    if ($result) {
-        return $true
-    }
-
-    if ($Revision -match "^[0-9a-fA-F]{7,40}$") {
-        $allRefs = & git ls-remote $RepoUrl 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            return $false
-        }
-        return [bool]($allRefs | Select-String -Pattern "^$Revision")
-    }
-    return $false
+    $resolved = Resolve-DataMasterRemoteRevision `
+        -RepoUrl $RepoUrl -Revision $Revision
+    return -not [string]::IsNullOrWhiteSpace($resolved)
 }
 
 function Get-DataMasterImageTag {

@@ -32,7 +32,8 @@ falha de pré-requisito deve ser corrigida antes de continuar.
 ## Caminho recomendado: clean room
 
 O comando abaixo exige uma revisão já publicada e acessível pelo Argo CD. Ele
-não faz push e recusa uma revisão remota ausente.
+não faz push e recusa uma revisão remota ausente ou que não aponte para o
+`HEAD` local exato.
 
 ```powershell
 .\scripts\minikube\Invoke-DataMasterCleanRoomValidation.ps1 `
@@ -42,7 +43,8 @@ não faz push e recusa uma revisão remota ausente.
 
 O fluxo:
 
-1. confirma que a revisão resolve para o `HEAD` local;
+1. confirma árvore Git limpa e que a revisão local e remota resolve para o
+   mesmo `HEAD`;
 2. valida os pré-requisitos;
 3. cria um profile Minikube isolado;
 4. constrói imagens Airflow e Spark com tag imutável derivada do commit;
@@ -70,12 +72,41 @@ substitua a revisão por `main` apenas para contornar o gate.
 
 Use esta sequência somente quando precisar isolar uma etapa do clean room.
 Mantenha o mesmo profile, revisão e tag de imagem em todos os comandos.
+A sequência falha se `$revision` não resolver exatamente para o `HEAD` local;
+manifests e imagens nunca podem vir de SHAs diferentes.
 
 ```powershell
 $profile = "data-master-repro-test"
 $revision = "<branch-ou-commit-publicado>"
 $repoUrl = "https://github.com/ale468/Data-Master-Platform.git"
-$tag = "git-" + (git rev-parse --short=12 HEAD)
+$common = ".\scripts\minikube\DataMaster.Minikube.Common.ps1"
+. $common
+$worktreeChanges = @(& git status --porcelain --untracked-files=all)
+if ($LASTEXITCODE -ne 0) {
+  throw "Não foi possível inspecionar a árvore Git."
+}
+if ($worktreeChanges.Count -gt 0) {
+  throw "O clean room exige árvore Git limpa antes de criar o profile."
+}
+$localHead = (& git rev-parse HEAD).Trim()
+$resolvedRevisionOutput = & git rev-parse "$revision^{commit}" 2>$null
+if ($LASTEXITCODE -ne 0) {
+  throw "Não foi possível resolver a revisão '$revision' localmente."
+}
+$resolvedRevision = ($resolvedRevisionOutput | Select-Object -Last 1).Trim()
+if ($resolvedRevision -ne $localHead) {
+  throw "A revisão '$revision' deve resolver exatamente para o HEAD local '$localHead'. Manifests e imagens não podem vir de SHAs diferentes."
+}
+$remoteRevision = Resolve-DataMasterRemoteRevision `
+  -RepoUrl $repoUrl `
+  -Revision $revision
+if ([string]::IsNullOrWhiteSpace($remoteRevision)) {
+  throw "A revisão '$revision' não está publicada em um ref remoto verificável."
+}
+if ($remoteRevision -ne $localHead) {
+  throw "A revisão remota '$revision' resolve para '$remoteRevision', não para o HEAD local '$localHead'."
+}
+$tag = "git-" + $localHead.Substring(0, 12)
 
 .\scripts\minikube\New-DataMasterCluster.ps1 -Profile $profile
 .\scripts\minikube\Build-DataMasterImages.ps1 -Tag $tag
@@ -98,9 +129,11 @@ $tag = "git-" + (git rev-parse --short=12 HEAD)
   -ImageTag $tag
 ```
 
-`Build-DataMasterImages.ps1` recusa uma árvore Git suja por padrão. Isso impede
-que uma tag baseada no commit descreva conteúdo diferente. Use `-AllowDirty`
-somente em diagnóstico local, nunca como evidência reproduzível.
+O preflight recusa uma árvore Git suja antes de criar o profile; o
+`Build-DataMasterImages.ps1` repete essa defesa antes do build. Isso impede que
+uma tentativa inválida deixe cluster residual e que uma tag baseada no commit
+descreva conteúdo diferente. Use `-AllowDirty` somente em diagnóstico local,
+nunca como evidência reproduzível.
 
 ## Secrets e acesso local
 
