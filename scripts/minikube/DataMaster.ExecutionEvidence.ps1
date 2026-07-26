@@ -25,6 +25,20 @@ $script:DataMasterExpectedGoldTables = @(
 $script:DataMasterSparkApplicationCheckpointKind =
     "data_master_spark_application_observation_checkpoint"
 
+function ConvertFrom-DataMasterJson {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Json
+    )
+
+    $convertFromJson = Get-Command ConvertFrom-Json
+    if ($convertFromJson.Parameters.ContainsKey("DateKind")) {
+        return ConvertFrom-Json -InputObject $Json -DateKind String
+    }
+    return ConvertFrom-Json -InputObject $Json
+}
+
 function Assert-DataMasterObjectShape {
     [CmdletBinding()]
     param(
@@ -348,7 +362,9 @@ function Read-DataMasterSparkApplicationObservationCheckpoint {
         throw "SparkApplication observation checkpoint does not exist: $resolved"
     }
     try {
-        $checkpoint = [System.IO.File]::ReadAllText($resolved) | ConvertFrom-Json
+        $checkpoint = ConvertFrom-DataMasterJson -Json (
+            [System.IO.File]::ReadAllText($resolved)
+        )
     }
     catch {
         throw "SparkApplication observation checkpoint is not valid JSON: $resolved"
@@ -831,7 +847,9 @@ function Read-DataMasterExecutionEvidence {
         throw "Durable execution evidence file does not exist: $resolved"
     }
     try {
-        $evidence = [System.IO.File]::ReadAllText($resolved) | ConvertFrom-Json
+        $evidence = ConvertFrom-DataMasterJson -Json (
+            [System.IO.File]::ReadAllText($resolved)
+        )
     }
     catch {
         throw "Durable execution evidence is not valid JSON: $resolved"

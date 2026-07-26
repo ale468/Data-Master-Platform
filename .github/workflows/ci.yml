@@ -230,6 +230,7 @@ jobs:
           docker run --rm \
             --env AIRFLOW__CORE__LOAD_EXAMPLES=False \
             --env AIRFLOW_HOME=/tmp/airflow \
+            --env PYTHONPATH=/opt/airflow/dags \
             --entrypoint python \
             data-master-airflow:quality-gates \
             -c '
