@@ -20,6 +20,8 @@ class RuntimeProfilesTests(unittest.TestCase):
             [
                 "local-small",
                 "minikube-integration",
+                "minikube-horizontal-1",
+                "minikube-horizontal-3",
                 "presentation-demo",
                 "local-medium",
                 "cloud-ready",

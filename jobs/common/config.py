@@ -57,12 +57,13 @@ class PipelineConfig:
             "com.amazonaws:aws-java-sdk-bundle:1.11.1026",
         ]),
     )
+    SPARK_S3_USE_ENV_CREDENTIALS = (
+        os.getenv("SPARK_S3_USE_ENV_CREDENTIALS", "false").lower() == "true"
+    )
     SPARK_CONFIGS = {
         "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension",
         "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         "spark.hadoop.fs.s3a.endpoint": MINIO_ENDPOINT,
-        "spark.hadoop.fs.s3a.access.key": MINIO_ACCESS_KEY,
-        "spark.hadoop.fs.s3a.secret.key": MINIO_SECRET_KEY,
         "spark.hadoop.fs.s3a.path.style.access": "true",
         "spark.hadoop.fs.s3a.connection.ssl.enabled": str(S3_USE_SSL).lower(),
         "spark.jars.ivy": os.getenv("SPARK_IVY_DIR", "/tmp/.ivy2"),
@@ -92,6 +93,13 @@ class PipelineConfig:
             str(SPARK_PROFILE["shuffle_partitions"]),
         ),
     }
+    if SPARK_S3_USE_ENV_CREDENTIALS:
+        SPARK_CONFIGS["spark.hadoop.fs.s3a.aws.credentials.provider"] = (
+            "com.amazonaws.auth.EnvironmentVariableCredentialsProvider"
+        )
+    else:
+        SPARK_CONFIGS["spark.hadoop.fs.s3a.access.key"] = MINIO_ACCESS_KEY
+        SPARK_CONFIGS["spark.hadoop.fs.s3a.secret.key"] = MINIO_SECRET_KEY
     if SPARK_JARS_PACKAGES.strip():
         SPARK_CONFIGS["spark.jars.packages"] = SPARK_JARS_PACKAGES
     
