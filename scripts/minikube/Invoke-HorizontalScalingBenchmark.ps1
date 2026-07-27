@@ -544,15 +544,32 @@ try {
         Remove-Item -LiteralPath $namespaceManifest.FullName -Force `
             -ErrorAction SilentlyContinue
     }
-    Set-DataMasterKubernetesSecret `
-        -Name "data-master-minio-secret" `
-        -Namespace "data-platform" `
-        -Values @{
-            MINIO_ACCESS_KEY = "dm" + (
-                New-Guid
-            ).Guid.Replace("-", "").Substring(0, 18)
-            MINIO_SECRET_KEY = New-DataMasterLocalSecretValue
+    $minioSecretValues = @{
+        MINIO_ACCESS_KEY = "dm" + (
+            New-Guid
+        ).Guid.Replace("-", "").Substring(0, 18)
+        MINIO_SECRET_KEY = New-DataMasterLocalSecretValue
+    }
+    $secretApplied = $false
+    for ($secretAttempt = 1; $secretAttempt -le 3; $secretAttempt++) {
+        try {
+            Set-DataMasterKubernetesSecret `
+                -Name "data-master-minio-secret" `
+                -Namespace "data-platform" `
+                -Values $minioSecretValues
+            $secretApplied = $true
+            break
         }
+        catch {
+            if ($secretAttempt -eq 3) {
+                throw
+            }
+            Start-Sleep -Seconds 5
+        }
+    }
+    if (-not $secretApplied) {
+        throw "Unable to apply the MinIO Secret after bounded retries."
+    }
 
     Invoke-DataMasterNative -FilePath "helm" -Arguments @(
         "repo", "add", "spark-operator",

@@ -502,6 +502,7 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("minikube delete --profile $Profile", source)
         self.assertIn("host.minikube.internal:5000", source)
         self.assertIn("docker container rm --force", source)
+        self.assertIn("$secretAttempt -le 3", source)
         self.assertIn("$script:HorizontalExitBlocked = 5", source)
         self.assertNotIn("local[*]", source)
 
