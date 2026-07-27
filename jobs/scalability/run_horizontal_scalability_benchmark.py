@@ -270,9 +270,16 @@ def _table_fingerprint(spark: Any, delta_io: Any, config: Any) -> Dict[str, Any]
         for column in sorted(frame.columns)
         if column.lower() not in TECHNICAL_FINGERPRINT_COLUMNS
     ]
-    row_count = int(frame.count())
     if not columns:
-        summary = {"rows": row_count, "min": None, "max": None, "sum": None}
+        aggregate = frame.agg(
+            functions.count(functions.lit(1)).alias("row_count")
+        ).first()
+        summary = {
+            "rows": int(aggregate["row_count"]),
+            "min": None,
+            "max": None,
+            "sum": None,
+        }
     else:
         values = [
             functions.coalesce(
@@ -285,6 +292,7 @@ def _table_fingerprint(spark: Any, delta_io: Any, config: Any) -> Dict[str, Any]
         aggregate = (
             frame.select(row_hash)
             .agg(
+                functions.count(functions.lit(1)).alias("row_count"),
                 functions.min("row_hash").alias("min_hash"),
                 functions.max("row_hash").alias("max_hash"),
                 functions.sum("row_hash").alias("sum_hash"),
@@ -292,7 +300,7 @@ def _table_fingerprint(spark: Any, delta_io: Any, config: Any) -> Dict[str, Any]
             .first()
         )
         summary = {
-            "rows": row_count,
+            "rows": int(aggregate["row_count"]),
             "min": aggregate["min_hash"],
             "max": aggregate["max_hash"],
             "sum": aggregate["sum_hash"],
@@ -303,7 +311,7 @@ def _table_fingerprint(spark: Any, delta_io: Any, config: Any) -> Dict[str, Any]
         separators=(",", ":"),
     ).encode("utf-8")
     return {
-        "row_count": row_count,
+        "row_count": summary["rows"],
         "fingerprint": "sha256:" + hashlib.sha256(encoded).hexdigest(),
     }
 

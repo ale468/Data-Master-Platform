@@ -1,4 +1,5 @@
 import copy
+import inspect
 import json
 import sys
 import tempfile
@@ -416,6 +417,12 @@ class HorizontalMetricAndClassificationTests(unittest.TestCase):
 
 
 class HorizontalEvidenceTests(unittest.TestCase):
+    def test_fingerprint_combines_count_and_hash_in_one_spark_action(self):
+        source = inspect.getsource(benchmark._table_fingerprint)
+        self.assertNotIn("frame.count()", source)
+        self.assertIn("functions.count(functions.lit(1))", source)
+        self.assertEqual(source.count(".first()"), 2)
+
     def test_executor_configured_but_not_observed_fails(self):
         payload = workload(benchmark.SCALE_OUT_PROFILE, 6)
         observed = observation(payload)
