@@ -187,6 +187,10 @@ class HorizontalProfileTests(unittest.TestCase):
         ]
         for profile in profiles:
             self.assertEqual(profile["spark"]["executor_memory"], "1g")
+            self.assertEqual(
+                profile["spark"]["executor_memory_overhead"],
+                "768m",
+            )
             self.assertEqual(profile["kubernetes"]["executor_cores"], 1)
             self.assertFalse(profile["spark"]["dynamic_allocation"])
             self.assertEqual(profile["spark"]["shuffle_partitions"], 24)
@@ -215,6 +219,8 @@ class HorizontalAdapterTests(unittest.TestCase):
         self.assertEqual(spec["executor"]["instances"], 3)
         self.assertEqual(spec["executor"]["cores"], 1)
         self.assertEqual(spec["executor"]["memory"], "1g")
+        self.assertEqual(spec["executor"]["memoryOverhead"], "768m")
+        self.assertEqual(spec["driver"]["memoryOverhead"], "512m")
         self.assertFalse(spec["executor"]["securityContext"]["allowPrivilegeEscalation"])
         self.assertTrue(spec["driver"]["securityContext"]["runAsNonRoot"])
         self.assertEqual(spec["sparkConf"]["spark.dynamicAllocation.enabled"], "false")
@@ -505,6 +511,17 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("$secretAttempt -le 3", source)
         self.assertIn("$script:HorizontalExitBlocked = 5", source)
         self.assertNotIn("local[*]", source)
+
+    def test_spark_rbac_can_patch_executor_pods(self):
+        source = (
+            REPO_ROOT
+            / "infra"
+            / "workloads"
+            / "spark-apps"
+            / "rbac"
+            / "spark-rbac.yaml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('"patch"', source)
 
 
 if __name__ == "__main__":

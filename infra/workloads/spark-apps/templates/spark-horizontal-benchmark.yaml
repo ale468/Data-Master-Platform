@@ -26,6 +26,6 @@ spec:
     spark.driver.extraJavaOptions: -XX:-UseContainerSupport
     spark.executor.extraJavaOptions: -XX:-UseContainerSupport
   driver:
-    memoryOverhead: 256m
+    memoryOverhead: replaced-by-horizontal-profile-adapter
   executor:
-    memoryOverhead: 256m
+    memoryOverhead: replaced-by-horizontal-profile-adapter
