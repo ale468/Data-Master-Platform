@@ -143,12 +143,20 @@ function Get-HorizontalPodSnapshot {
     $document = $json | ConvertFrom-Json
     $snapshot = @()
     foreach ($pod in @($document.items)) {
+        $node = ""
+        if ($null -ne $pod.spec.PSObject.Properties["nodeName"]) {
+            $node = [string]$pod.spec.nodeName
+        }
+        $podIp = ""
+        if ($null -ne $pod.status.PSObject.Properties["podIP"]) {
+            $podIp = [string]$pod.status.podIP
+        }
         $snapshot += [pscustomobject]@{
             name = [string]$pod.metadata.name
             role = [string]$pod.metadata.labels."data-master.io/spark-role"
             status = [string]$pod.status.phase
-            node = [string]$pod.spec.nodeName
-            pod_ip = [string]$pod.status.podIP
+            node = $node
+            pod_ip = $podIp
         }
     }
     return $snapshot
