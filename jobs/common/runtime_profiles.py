@@ -101,6 +101,7 @@ def build_horizontal_profile(executor_instances: int) -> Dict[str, Any]:
             },
             "minio": {
                 "persistence_size": "20Gi",
+                "go_memory_limit": "2GiB",
                 "resources": {
                     "requests": {
                         "cpu": "200m",
@@ -108,7 +109,7 @@ def build_horizontal_profile(executor_instances: int) -> Dict[str, Any]:
                     },
                     "limits": {
                         "cpu": "1000m",
-                        "memory": "1536Mi",
+                        "memory": "2560Mi",
                     },
                 },
             },

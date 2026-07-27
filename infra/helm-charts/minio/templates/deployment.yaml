@@ -40,6 +40,9 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.credentialsSecretName }}
                   key: MINIO_SECRET_KEY
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}

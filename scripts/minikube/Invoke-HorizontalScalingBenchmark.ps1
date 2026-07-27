@@ -697,6 +697,11 @@ try {
             "resources.limits.memory=" +
             [string]$plan.infrastructure.minio.resources.limits.memory
         ),
+        "--set-string", "extraEnv[0].name=GOMEMLIMIT",
+        "--set-string", (
+            "extraEnv[0].value=" +
+            [string]$plan.infrastructure.minio.go_memory_limit
+        ),
         "--wait", "--timeout", "900s"
     )
     Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(

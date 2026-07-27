@@ -207,7 +207,11 @@ class HorizontalProfileTests(unittest.TestCase):
                 profile["kubernetes"]["minio"]["resources"]["limits"][
                     "memory"
                 ],
-                "1536Mi",
+                "2560Mi",
+            )
+            self.assertEqual(
+                profile["kubernetes"]["minio"]["go_memory_limit"],
+                "2GiB",
             )
 
 
@@ -497,7 +501,7 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertEqual(plan["infrastructure"]["minikube"]["cpus"], 4)
         self.assertEqual(
             plan["infrastructure"]["minio"]["resources"]["limits"]["memory"],
-            "1536Mi",
+            "2560Mi",
         )
         self.assertEqual(
             sum(
@@ -538,6 +542,8 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("validation_failures", source)
         self.assertIn("$state -in $terminalFailureStates", source)
         self.assertIn("resources.limits.memory=", source)
+        self.assertIn("extraEnv[0].name=GOMEMLIMIT", source)
+        self.assertIn("go_memory_limit", source)
         self.assertIn("$plan.infrastructure.minio", source)
         self.assertIn("$script:HorizontalExitBlocked = 5", source)
         self.assertNotIn("local[*]", source)
