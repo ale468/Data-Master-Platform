@@ -488,15 +488,17 @@ try {
         "push", $registryTaggedImage
     )
     $repositoryDigests = @(
-        Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Arguments @(
-            "image", "inspect", $registryTaggedImage,
-            "--format", "{{range .RepoDigests}}{{println .}}{{end}}"
-        )
-    ) | Where-Object {
-        ([string]$_).Trim().StartsWith(
-            "localhost:5000/$SparkImageRepository@sha256:"
-        )
-    }
+        @(
+            Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Arguments @(
+                "image", "inspect", $registryTaggedImage,
+                "--format", "{{range .RepoDigests}}{{println .}}{{end}}"
+            )
+        ) | Where-Object {
+            ([string]$_).Trim().StartsWith(
+                "localhost:5000/$SparkImageRepository@sha256:"
+            )
+        }
+    )
     if ($repositoryDigests.Count -ne 1) {
         throw "Local registry did not return exactly one repository digest."
     }
