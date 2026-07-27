@@ -12,7 +12,9 @@ param(
     [string]$DiskSize = "30g",
 
     [ValidateSet("docker", "hyperv", "virtualbox")]
-    [string]$Driver = "docker"
+    [string]$Driver = "docker",
+
+    [string[]]$InsecureRegistry = @()
 )
 
 Set-StrictMode -Version Latest
@@ -28,7 +30,7 @@ else {
     Write-Output "MINIKUBE_PROFILE_ACTION=CREATE"
 }
 
-Invoke-DataMasterNative -FilePath "minikube" -Arguments @(
+$startArguments = @(
     "start",
     "-p", $Profile,
     "--cpus=$Cpus",
@@ -36,6 +38,13 @@ Invoke-DataMasterNative -FilePath "minikube" -Arguments @(
     "--disk-size=$DiskSize",
     "--driver=$Driver"
 )
+foreach ($registry in $InsecureRegistry) {
+    if ([string]::IsNullOrWhiteSpace($registry)) {
+        throw "Insecure registry entries cannot be empty."
+    }
+    $startArguments += "--insecure-registry=$registry"
+}
+Invoke-DataMasterNative -FilePath "minikube" -Arguments $startArguments
 Set-DataMasterMinikubeContext -Profile $Profile
 
 $activeContext = (& kubectl config current-context).Trim()

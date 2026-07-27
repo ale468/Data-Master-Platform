@@ -30,7 +30,7 @@ SUPPORTED_TOPOLOGIES = {
 _KUBERNETES_ID = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST_IMAGE = re.compile(
-    r"^[a-z0-9][a-z0-9./_-]*@sha256:[0-9a-f]{64}$"
+    r"^[a-z0-9][a-z0-9.:/_-]*@sha256:[0-9a-f]{64}$"
 )
 
 

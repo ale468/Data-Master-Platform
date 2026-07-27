@@ -32,6 +32,7 @@ $script:FinalExitCode = $script:HorizontalExitHarnessError
 $script:SparkImageForPython = ""
 $script:HorizontalTemporaryRoot = ""
 $script:LastHorizontalPythonExitCode = 0
+$script:RegistryContainer = ""
 
 function Throw-HorizontalBlocked {
     param([Parameter(Mandatory = $true)][string]$Message)
@@ -443,6 +444,21 @@ try {
         )
     }
 
+    $registryListener = Get-NetTCPConnection -State Listen -LocalPort 5000 `
+        -ErrorAction SilentlyContinue
+    if ($registryListener) {
+        Throw-HorizontalBlocked (
+            "Local registry port 5000 is already in use and will not be modified."
+        )
+    }
+    $script:RegistryContainer = "dm-horizontal-registry-$timestamp"
+    Invoke-DataMasterNative -FilePath "docker" -Arguments @(
+        "run", "--detach",
+        "--name", $script:RegistryContainer,
+        "--publish", "127.0.0.1:5000:5000",
+        "registry:2.8.3"
+    ) | Out-Null
+
     $imageTag = "git-$gitSha"
     $sparkImage = "${SparkImageRepository}:$imageTag"
     Invoke-DataMasterNative -FilePath "docker" -Arguments @(
@@ -453,7 +469,7 @@ try {
         $root
     )
     $script:SparkImageForPython = $sparkImage
-    $imageDigest = (
+    $imageId = (
         (
             Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Arguments @(
                 "image", "inspect", $sparkImage,
@@ -461,24 +477,48 @@ try {
             )
         ) | Select-Object -Last 1
     ).Trim()
-    if ($imageDigest -notmatch "^sha256:[0-9a-f]{64}$") {
-        throw "Docker did not return an immutable sha256 image digest."
+    if ($imageId -notmatch "^sha256:[0-9a-f]{64}$") {
+        throw "Docker did not return an immutable sha256 image ID."
     }
-    $imageReference = "$SparkImageRepository@$imageDigest"
+    $registryTaggedImage = "localhost:5000/${SparkImageRepository}:$imageTag"
+    Invoke-DataMasterNative -FilePath "docker" -Arguments @(
+        "tag", $sparkImage, $registryTaggedImage
+    )
+    Invoke-DataMasterNative -FilePath "docker" -Arguments @(
+        "push", $registryTaggedImage
+    )
+    $repositoryDigests = @(
+        Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Arguments @(
+            "image", "inspect", $registryTaggedImage,
+            "--format", "{{range .RepoDigests}}{{println .}}{{end}}"
+        )
+    ) | Where-Object {
+        ([string]$_).Trim().StartsWith(
+            "localhost:5000/$SparkImageRepository@sha256:"
+        )
+    }
+    if ($repositoryDigests.Count -ne 1) {
+        throw "Local registry did not return exactly one repository digest."
+    }
+    $imageDigest = ([string]$repositoryDigests[0]).Trim().Split("@", 2)[1]
+    if ($imageDigest -notmatch "^sha256:[0-9a-f]{64}$") {
+        throw "Local registry did not return an immutable manifest digest."
+    }
+    $imageReference = (
+        "host.minikube.internal:5000/$SparkImageRepository@$imageDigest"
+    )
 
     & (Join-Path $PSScriptRoot "New-DataMasterCluster.ps1") `
         -Profile $Profile `
         -Cpus 4 `
         -Memory 11264 `
         -DiskSize "40g" `
-        -Driver docker
+        -Driver docker `
+        -InsecureRegistry "host.minikube.internal:5000"
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to create isolated Minikube profile."
     }
     $script:ProfileCreatedByRun = $true
-    Invoke-DataMasterNative -FilePath "minikube" -Arguments @(
-        "image", "load", $sparkImage, "--profile", $Profile
-    )
     Set-DataMasterMinikubeContext -Profile $Profile
 
     $namespaceManifest = New-TemporaryFile
@@ -658,6 +698,15 @@ finally {
         & minikube delete --profile $Profile
         if ($LASTEXITCODE -ne 0 -and $script:FinalExitCode -eq 0) {
             $script:FinalExitCode = $script:HorizontalExitHarnessError
+        }
+    }
+    if ($script:RegistryContainer) {
+        & docker container inspect $script:RegistryContainer 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            & docker container rm --force $script:RegistryContainer | Out-Null
+            if ($LASTEXITCODE -ne 0 -and $script:FinalExitCode -eq 0) {
+                $script:FinalExitCode = $script:HorizontalExitHarnessError
+            }
         }
     }
     $resolvedTemporaryRoot = [System.IO.Path]::GetFullPath($temporaryRoot)

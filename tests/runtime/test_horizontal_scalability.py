@@ -275,6 +275,22 @@ class HorizontalAdapterTests(unittest.TestCase):
                 repetition=1,
             )
 
+    def test_local_ephemeral_registry_digest_is_accepted(self):
+        image = "host.minikube.internal:5000/data-master-spark-jobs@" + IMAGE_DIGEST
+        application = build_horizontal_spark_application(
+            profile_id=benchmark.BASELINE_PROFILE,
+            benchmark_id="hscale-test",
+            run_id="run-1",
+            batch_id="batch-1",
+            git_sha=GIT_SHA,
+            image=image,
+            image_digest=IMAGE_DIGEST,
+            topology="single-node-application-scale-out",
+            measurement_kind="measurement",
+            repetition=1,
+        )
+        self.assertEqual(application["spec"]["image"], image)
+
     def test_multi_node_adds_spread_and_single_node_does_not(self):
         single = self.application()["spec"]["executor"]
         multi = build_horizontal_spark_application(
@@ -484,6 +500,8 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("data-master.io/run-id=", source)
         self.assertIn("data-master.io/run-id=$($Run.run_id)", source)
         self.assertIn("minikube delete --profile $Profile", source)
+        self.assertIn("host.minikube.internal:5000", source)
+        self.assertIn("docker container rm --force", source)
         self.assertIn("$script:HorizontalExitBlocked = 5", source)
         self.assertNotIn("local[*]", source)
 
