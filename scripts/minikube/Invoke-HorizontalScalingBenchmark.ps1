@@ -177,6 +177,49 @@ function Update-HorizontalPodInventory {
     }
 }
 
+function Get-HorizontalMinioObservation {
+    $json = @(
+        Invoke-DataMasterNative -FilePath "kubectl" -CaptureOutput -Arguments @(
+            "get", "pods",
+            "--namespace", "data-platform",
+            "--selector", "app.kubernetes.io/instance=minio",
+            "--output", "json"
+        )
+    ) -join [Environment]::NewLine
+    $document = $json | ConvertFrom-Json
+    $pods = @($document.items)
+    if ($pods.Count -ne 1) {
+        Throw-HorizontalFail (
+            "Expected exactly one MinIO pod; observed $($pods.Count)."
+        )
+    }
+    $pod = $pods[0]
+    $statuses = @(
+        $pod.status.containerStatuses |
+            Where-Object { $_.name -eq "minio" }
+    )
+    if ($statuses.Count -ne 1) {
+        Throw-HorizontalFail "MinIO container status is unavailable."
+    }
+    $container = $statuses[0]
+    $ready = (
+        [string]$pod.status.phase -eq "Running" -and
+        [bool]$container.ready
+    )
+    $restartCount = [int]$container.restartCount
+    if (-not $ready -or $restartCount -ne 0) {
+        Throw-HorizontalFail (
+            "MinIO must remain ready with zero restarts; " +
+            "ready=$ready restarts=$restartCount."
+        )
+    }
+    return [pscustomobject]@{
+        status = "PASS"
+        pod_count = 1
+        restart_count = $restartCount
+    }
+}
+
 function Invoke-HorizontalApplication {
     param(
         [Parameter(Mandatory = $true)]
@@ -205,6 +248,7 @@ function Invoke-HorizontalApplication {
     $observationPath = Join-Path $WorkingDirectory (
         "$($Run.run_id).observation.json"
     )
+    Get-HorizontalMinioObservation | Out-Null
     $renderArguments = @(
         "/repo/jobs/scalability/run_horizontal_scalability_benchmark.py",
         "--render-application",
@@ -258,6 +302,7 @@ function Invoke-HorizontalApplication {
             "SparkApplication $applicationName timed out in state $state."
         )
     }
+    $sharedStorage = Get-HorizontalMinioObservation
 
     $driverPods = @(
         $inventory.Values | Where-Object { $_.role -eq "driver" }
@@ -318,6 +363,7 @@ function Invoke-HorizontalApplication {
         executors_requested = $requested
         driver_pods = @($driverPods)
         executor_pods = @($executorPods)
+        shared_storage = $sharedStorage
     }
     [System.IO.File]::WriteAllText(
         $observationPath,
@@ -510,11 +556,21 @@ try {
         "host.minikube.internal:5000/$SparkImageRepository@$imageDigest"
     )
 
+    $planPath = Join-Path $temporaryRoot "plan.json"
+    Invoke-HorizontalPython -Arguments @(
+        "/repo/jobs/scalability/run_horizontal_scalability_benchmark.py",
+        "--plan",
+        "--benchmark-id", $benchmarkId,
+        "--topology", $Topology,
+        "--output", "/work/plan.json"
+    )
+    $plan = Get-Content -LiteralPath $planPath -Raw | ConvertFrom-Json
+
     & (Join-Path $PSScriptRoot "New-DataMasterCluster.ps1") `
         -Profile $Profile `
-        -Cpus 4 `
-        -Memory 11264 `
-        -DiskSize "40g" `
+        -Cpus ([int]$plan.infrastructure.minikube.cpus) `
+        -Memory ([int]$plan.infrastructure.minikube.memory_mib) `
+        -DiskSize ([string]$plan.infrastructure.minikube.disk_size) `
         -Driver docker `
         -InsecureRegistry "host.minikube.internal:5000"
     if ($LASTEXITCODE -ne 0) {
@@ -597,7 +653,26 @@ try {
         "upgrade", "--install", "minio",
         (Join-Path $root "infra\helm-charts\minio"),
         "--namespace", "data-platform",
-        "--set", "persistence.size=20Gi",
+        "--set-string", (
+            "persistence.size=" +
+            [string]$plan.infrastructure.minio.persistence_size
+        ),
+        "--set-string", (
+            "resources.requests.cpu=" +
+            [string]$plan.infrastructure.minio.resources.requests.cpu
+        ),
+        "--set-string", (
+            "resources.requests.memory=" +
+            [string]$plan.infrastructure.minio.resources.requests.memory
+        ),
+        "--set-string", (
+            "resources.limits.cpu=" +
+            [string]$plan.infrastructure.minio.resources.limits.cpu
+        ),
+        "--set-string", (
+            "resources.limits.memory=" +
+            [string]$plan.infrastructure.minio.resources.limits.memory
+        ),
         "--wait", "--timeout", "900s"
     )
     Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
@@ -615,15 +690,6 @@ try {
         "--timeout=300s"
     )
 
-    $planPath = Join-Path $temporaryRoot "plan.json"
-    Invoke-HorizontalPython -Arguments @(
-        "/repo/jobs/scalability/run_horizontal_scalability_benchmark.py",
-        "--plan",
-        "--benchmark-id", $benchmarkId,
-        "--topology", $Topology,
-        "--output", "/work/plan.json"
-    )
-    $plan = Get-Content -LiteralPath $planPath -Raw | ConvertFrom-Json
     $warmups = @()
     $measurements = @()
     foreach ($run in @($plan.runs)) {
@@ -651,6 +717,7 @@ try {
         schema_version = 1
         benchmark_id = $benchmarkId
         topology = $Topology
+        infrastructure = $plan.infrastructure
         warmups = $warmups
         measurements = $measurements
     }

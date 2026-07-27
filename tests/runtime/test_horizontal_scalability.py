@@ -137,6 +137,11 @@ def observation(payload, node="minikube"):
             }
         ],
         "executor_pods": pods,
+        "shared_storage": {
+            "status": "PASS",
+            "pod_count": 1,
+            "restart_count": 0,
+        },
     }
 
 
@@ -192,8 +197,18 @@ class HorizontalProfileTests(unittest.TestCase):
                 "768m",
             )
             self.assertEqual(profile["kubernetes"]["executor_cores"], 1)
+            self.assertEqual(
+                profile["kubernetes"]["executor_core_request"],
+                "750m",
+            )
             self.assertFalse(profile["spark"]["dynamic_allocation"])
             self.assertEqual(profile["spark"]["shuffle_partitions"], 24)
+            self.assertEqual(
+                profile["kubernetes"]["minio"]["resources"]["limits"][
+                    "memory"
+                ],
+                "1536Mi",
+            )
 
 
 class HorizontalAdapterTests(unittest.TestCase):
@@ -221,6 +236,9 @@ class HorizontalAdapterTests(unittest.TestCase):
         self.assertEqual(spec["executor"]["memory"], "1g")
         self.assertEqual(spec["executor"]["memoryOverhead"], "768m")
         self.assertEqual(spec["driver"]["memoryOverhead"], "512m")
+        self.assertEqual(spec["executor"]["coreRequest"], "750m")
+        self.assertEqual(spec["executor"]["coreLimit"], "1000m")
+        self.assertEqual(spec["driver"]["coreRequest"], "250m")
         self.assertFalse(spec["executor"]["securityContext"]["allowPrivilegeEscalation"])
         self.assertTrue(spec["driver"]["securityContext"]["runAsNonRoot"])
         self.assertEqual(spec["sparkConf"]["spark.dynamicAllocation.enabled"], "false")
@@ -476,6 +494,11 @@ class HorizontalEvidenceTests(unittest.TestCase):
         ]
         self.assertEqual(len(warmups), 1)
         self.assertEqual(len(measurements), 6)
+        self.assertEqual(plan["infrastructure"]["minikube"]["cpus"], 4)
+        self.assertEqual(
+            plan["infrastructure"]["minio"]["resources"]["limits"]["memory"],
+            "1536Mi",
+        )
         self.assertEqual(
             sum(
                 run["profile_id"] == benchmark.BASELINE_PROFILE
@@ -509,8 +532,24 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("host.minikube.internal:5000", source)
         self.assertIn("docker container rm --force", source)
         self.assertIn("$secretAttempt -le 3", source)
+        self.assertIn("Get-HorizontalMinioObservation", source)
+        self.assertIn("MinIO must remain ready with zero restarts", source)
+        self.assertIn("resources.limits.memory=", source)
+        self.assertIn("$plan.infrastructure.minio", source)
         self.assertIn("$script:HorizontalExitBlocked = 5", source)
         self.assertNotIn("local[*]", source)
+
+    def test_shared_storage_restart_fails_evidence(self):
+        payload = workload(benchmark.BASELINE_PROFILE, 10)
+        observed = observation(payload)
+        observed["shared_storage"]["restart_count"] = 1
+        observed["shared_storage"]["status"] = "FAIL"
+        combined_result = benchmark._combine_measurement(payload, observed)
+        self.assertEqual(combined_result["status"], "FAIL")
+        self.assertIn(
+            "shared_storage_restart_observed",
+            combined_result["validation_failures"],
+        )
 
     def test_spark_rbac_can_patch_executor_pods(self):
         source = (

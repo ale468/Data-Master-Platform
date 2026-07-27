@@ -72,8 +72,15 @@ def validate_horizontal_profile(profile: Mapping[str, Any]) -> None:
         raise ValueError("Horizontal Spark benchmark requires 1 or 3 executors.")
     if spark["executor_memory"] != "1g":
         raise ValueError("Horizontal Spark benchmark requires 1g per executor.")
-    if profile["kubernetes"]["executor_cores"] != 1:
+    kubernetes = profile["kubernetes"]
+    if kubernetes["executor_cores"] != 1:
         raise ValueError("Horizontal Spark benchmark requires one core per executor.")
+    if kubernetes["executor_core_request"] != "750m":
+        raise ValueError("Horizontal Spark executor request must remain controlled.")
+    if kubernetes["executor_core_limit"] != "1000m":
+        raise ValueError("Horizontal Spark executor limit must remain one core.")
+    if spark["executor_memory_overhead"] != "768m":
+        raise ValueError("Horizontal Spark executor overhead must remain controlled.")
 
 
 def validate_horizontal_profile_pair(
@@ -328,7 +335,8 @@ def build_horizontal_spark_application(
     spec["driver"].update(
         {
             "cores": kubernetes["driver_cores"],
-            "coreLimit": f"{kubernetes['driver_cores'] * 1000}m",
+            "coreRequest": kubernetes["driver_core_request"],
+            "coreLimit": kubernetes["driver_core_limit"],
             "memory": spark["driver_memory"],
             "memoryOverhead": spark["driver_memory_overhead"],
             "serviceAccount": kubernetes["service_account"],
@@ -340,6 +348,8 @@ def build_horizontal_spark_application(
     spec["executor"].update(
         {
             "cores": kubernetes["executor_cores"],
+            "coreRequest": kubernetes["executor_core_request"],
+            "coreLimit": kubernetes["executor_core_limit"],
             "instances": spark["executor_instances"],
             "memory": spark["executor_memory"],
             "memoryOverhead": spark["executor_memory_overhead"],

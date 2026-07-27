@@ -779,6 +779,11 @@ def _combine_measurement(
         failures.append("observation_run_mismatch")
     if observation.get("application_status") != "COMPLETED":
         failures.append("spark_application_not_completed")
+    shared_storage = observation.get("shared_storage", {})
+    if shared_storage.get("status") != "PASS":
+        failures.append("shared_storage_not_stable")
+    if int(shared_storage.get("restart_count", -1)) != 0:
+        failures.append("shared_storage_restart_observed")
     requested = workload.get("executors_requested")
     if observation.get("executors_requested") != requested:
         failures.append("observation_requested_executor_mismatch")
@@ -847,6 +852,7 @@ def _combine_measurement(
     combined["driver_pods_observed"] = len(
         observation.get("driver_pods", [])
     )
+    combined["shared_storage"] = dict(shared_storage)
     combined["validation_failures"] = list(dict.fromkeys(failures))
     combined["status"] = "PASS" if not failures else "FAIL"
     return combined
@@ -1010,6 +1016,7 @@ def aggregate_benchmark(args: argparse.Namespace) -> int:
                 "baseline_profile": BASELINE_PROFILE,
                 "scale_out_profile": SCALE_OUT_PROFILE,
                 "primary_variable": "spark.executor_instances",
+                "controlled_infrastructure": manifest["infrastructure"],
                 "warmups_discarded": WARMUP_RUNS,
                 "measurements_per_profile": MEASUREMENT_REPETITIONS,
                 "statistic": "median",
@@ -1095,6 +1102,7 @@ def render_application(args: argparse.Namespace) -> int:
 def write_run_plan(args: argparse.Namespace) -> int:
     """Materialize the only component that knows both comparison profiles."""
     validate_horizontal_profile_pair(BASELINE_PROFILE, SCALE_OUT_PROFILE)
+    baseline_profile = get_runtime_profile(BASELINE_PROFILE)
     runs = [
         {
             "profile_id": BASELINE_PROFILE,
@@ -1132,6 +1140,10 @@ def write_run_plan(args: argparse.Namespace) -> int:
         "schema_version": SCHEMA_VERSION,
         "benchmark_id": args.benchmark_id,
         "topology": args.topology,
+        "infrastructure": {
+            "minikube": dict(baseline_profile["kubernetes"]["minikube"]),
+            "minio": dict(baseline_profile["kubernetes"]["minio"]),
+        },
         "runs": runs,
     }
     Path(args.output).write_text(

@@ -89,7 +89,29 @@ def build_horizontal_profile(executor_instances: int) -> Dict[str, Any]:
             "image": "${DATA_MASTER_SPARK_IMAGE_DIGEST}",
             "image_pull_policy": "IfNotPresent",
             "driver_cores": 1,
+            "driver_core_request": "250m",
+            "driver_core_limit": "1000m",
             "executor_cores": 1,
+            "executor_core_request": "750m",
+            "executor_core_limit": "1000m",
+            "minikube": {
+                "cpus": 4,
+                "memory_mib": 11264,
+                "disk_size": "40g",
+            },
+            "minio": {
+                "persistence_size": "20Gi",
+                "resources": {
+                    "requests": {
+                        "cpu": "200m",
+                        "memory": "512Mi",
+                    },
+                    "limits": {
+                        "cpu": "1000m",
+                        "memory": "1536Mi",
+                    },
+                },
+            },
             "minio_endpoint": (
                 "http://minio.data-platform.svc.cluster.local:9000"
             ),
