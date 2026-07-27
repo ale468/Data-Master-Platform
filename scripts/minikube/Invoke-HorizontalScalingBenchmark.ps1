@@ -272,6 +272,12 @@ function Invoke-HorizontalApplication {
     $applicationName = [string]$Run.application_name
     $inventory = @{}
     $state = "SUBMITTED"
+    $terminalFailureStates = @(
+        "FAILED",
+        "FAILING",
+        "SUBMISSION_FAILED",
+        "INVALIDATING"
+    )
     $deadline = (Get-Date).AddSeconds($ApplicationTimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         Update-HorizontalPodInventory -Inventory $inventory -RunId $Run.run_id
@@ -284,20 +290,16 @@ function Invoke-HorizontalApplication {
         if ($state -eq "COMPLETED") {
             break
         }
-        if ($state -in @(
-            "FAILED",
-            "FAILING",
-            "SUBMISSION_FAILED",
-            "INVALIDATING"
-        )) {
-            Throw-HorizontalFail (
-                "SparkApplication $applicationName entered state $state."
-            )
+        if ($state -in $terminalFailureStates) {
+            break
         }
         Start-Sleep -Seconds 3
     }
     Update-HorizontalPodInventory -Inventory $inventory -RunId $Run.run_id
-    if ($state -ne "COMPLETED") {
+    if (
+        $state -ne "COMPLETED" -and
+        $state -notin $terminalFailureStates
+    ) {
         Throw-HorizontalFail (
             "SparkApplication $applicationName timed out in state $state."
         )
@@ -370,6 +372,28 @@ function Invoke-HorizontalApplication {
         ($observation | ConvertTo-Json -Depth 30) + [Environment]::NewLine,
         (New-Object System.Text.UTF8Encoding($false))
     )
+
+    if ($state -ne "COMPLETED" -or [string]$payload.status -ne "PASS") {
+        $diagnostics = @()
+        if (
+            $null -ne $payload.PSObject.Properties["validation_failures"]
+        ) {
+            $diagnostics += @($payload.validation_failures)
+        }
+        if ($null -ne $payload.PSObject.Properties["failure"]) {
+            $diagnostics += (
+                "workload_failure_type=" + [string]$payload.failure.type
+            )
+        }
+        $diagnosticText = "no_sanitized_driver_diagnostic"
+        if ($diagnostics.Count -gt 0) {
+            $diagnosticText = (@($diagnostics) -join ",")
+        }
+        Throw-HorizontalFail (
+            "SparkApplication $applicationName ended in state $state; " +
+            "diagnostic=$diagnosticText."
+        )
+    }
 
     Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
         "delete", "sparkapplication", $applicationName,
