@@ -536,6 +536,8 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("host.minikube.internal:5000", source)
         self.assertIn("docker container rm --force", source)
         self.assertIn("$secretAttempt -le 3", source)
+        self.assertIn("Invoke-HorizontalKubernetesRead", source)
+        self.assertIn("$readAttempt -le 5", source)
         self.assertIn("Get-HorizontalMinioObservation", source)
         self.assertIn("MinIO must remain ready with zero restarts", source)
         self.assertIn("workload_failure_type=", source)

@@ -127,20 +127,45 @@ function Invoke-HorizontalPython {
     }
 }
 
+function Invoke-HorizontalKubernetesRead {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    for ($readAttempt = 1; $readAttempt -le 5; $readAttempt++) {
+        try {
+            $output = @(
+                Invoke-DataMasterNative -FilePath "kubectl" `
+                    -CaptureOutput -Arguments $Arguments
+            ) -join [Environment]::NewLine
+            if ([string]::IsNullOrWhiteSpace($output)) {
+                throw "Kubernetes read returned no content."
+            }
+            return $output
+        }
+        catch {
+            if ($readAttempt -eq 5) {
+                throw
+            }
+            Start-Sleep -Seconds 3
+        }
+    }
+    throw "Kubernetes read exhausted its bounded retries."
+}
+
 function Get-HorizontalPodSnapshot {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RunId
     )
 
-    $json = @(
-        Invoke-DataMasterNative -FilePath "kubectl" -CaptureOutput -Arguments @(
+    $json = Invoke-HorizontalKubernetesRead -Arguments @(
             "get", "pods",
             "--namespace", "data-platform",
             "--selector", "data-master.io/run-id=$RunId",
             "--output", "json"
-        )
-    ) -join [Environment]::NewLine
+    )
     $document = $json | ConvertFrom-Json
     $snapshot = @()
     foreach ($pod in @($document.items)) {
@@ -178,14 +203,12 @@ function Update-HorizontalPodInventory {
 }
 
 function Get-HorizontalMinioObservation {
-    $json = @(
-        Invoke-DataMasterNative -FilePath "kubectl" -CaptureOutput -Arguments @(
+    $json = Invoke-HorizontalKubernetesRead -Arguments @(
             "get", "pods",
             "--namespace", "data-platform",
             "--selector", "app.kubernetes.io/instance=minio",
             "--output", "json"
-        )
-    ) -join [Environment]::NewLine
+    )
     $document = $json | ConvertFrom-Json
     $pods = @($document.items)
     if ($pods.Count -ne 1) {
@@ -313,9 +336,11 @@ function Invoke-HorizontalApplication {
         $inventory.Values | Where-Object { $_.role -eq "executor" }
     )
     $requested = [int](
-        & kubectl get sparkapplication $applicationName `
-            --namespace data-platform `
-            --output "jsonpath={.spec.executor.instances}"
+        Invoke-HorizontalKubernetesRead -Arguments @(
+            "get", "sparkapplication", $applicationName,
+            "--namespace", "data-platform",
+            "--output", "jsonpath={.spec.executor.instances}"
+        )
     )
     if ($driverPods.Count -ne 1) {
         Throw-HorizontalFail (
