@@ -75,7 +75,7 @@ def build_horizontal_profile(executor_instances: int) -> Dict[str, Any]:
         "spark": {
             "master": "k8s://https://kubernetes.default.svc",
             "driver_memory": "1g",
-            "driver_memory_overhead": "512m",
+            "driver_memory_overhead": "1024m",
             "executor_memory": "1g",
             "executor_memory_overhead": "768m",
             "executor_instances": executor_instances,

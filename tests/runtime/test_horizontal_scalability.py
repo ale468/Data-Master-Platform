@@ -241,7 +241,7 @@ class HorizontalAdapterTests(unittest.TestCase):
         self.assertEqual(spec["executor"]["cores"], 1)
         self.assertEqual(spec["executor"]["memory"], "1g")
         self.assertEqual(spec["executor"]["memoryOverhead"], "768m")
-        self.assertEqual(spec["driver"]["memoryOverhead"], "512m")
+        self.assertEqual(spec["driver"]["memoryOverhead"], "1024m")
         self.assertEqual(spec["executor"]["coreRequest"], "750m")
         self.assertEqual(spec["executor"]["coreLimit"], "1000m")
         self.assertEqual(spec["driver"]["coreRequest"], "250m")
