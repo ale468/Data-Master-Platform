@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -418,6 +418,26 @@ class HorizontalMetricAndClassificationTests(unittest.TestCase):
 
 
 class HorizontalEvidenceTests(unittest.TestCase):
+    def test_spark_status_api_uses_bounded_large_snapshot_timeout(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b"[]"
+        response.__exit__.return_value = False
+        with patch.object(
+            benchmark.urllib.request,
+            "urlopen",
+            return_value=response,
+        ) as urlopen:
+            self.assertEqual(
+                benchmark._status_api_json("http://spark-ui/api/v1/stages"),
+                [],
+            )
+
+        urlopen.assert_called_once_with(
+            "http://spark-ui/api/v1/stages",
+            timeout=benchmark.SPARK_STATUS_API_TIMEOUT_SECONDS,
+        )
+        self.assertEqual(benchmark.SPARK_STATUS_API_TIMEOUT_SECONDS, 90)
+
     def test_spark_status_api_excludes_raw_stage_names_and_keeps_duration(self):
         class SparkContext:
             uiWebUrl = "http://spark-ui"

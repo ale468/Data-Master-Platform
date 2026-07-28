@@ -50,6 +50,7 @@ MEASUREMENT_REPETITIONS = 3
 WARMUP_RUNS = 1
 WORKLOAD_RESULT_MARKER = "HORIZONTAL_WORKLOAD_RESULT="
 BENCHMARK_RESULT_MARKER = "HORIZONTAL_BENCHMARK_RESULT="
+SPARK_STATUS_API_TIMEOUT_SECONDS = 90
 
 EXIT_PASS = 0
 EXIT_INCONCLUSIVE = 2
@@ -375,7 +376,13 @@ def _collect_functional_fingerprints(
 
 
 def _status_api_json(url: str) -> Any:
-    with urllib.request.urlopen(url, timeout=10) as response:
+    # A complete application can expose more than two thousand stage records.
+    # Keep this observation fail-closed, but give the local Spark UI enough
+    # time to serialize the immutable completed-stage snapshot.
+    with urllib.request.urlopen(
+        url,
+        timeout=SPARK_STATUS_API_TIMEOUT_SECONDS,
+    ) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
