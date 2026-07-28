@@ -22,6 +22,9 @@ from spark_session import create_spark_session
 
 logger = logging.getLogger(__name__)
 
+MONEY_DECIMAL_TYPE = "decimal(18,2)"
+MONEY_TOTAL_DECIMAL_TYPE = "decimal(28,2)"
+
 
 def _write_gold(
     df: DataFrame,
@@ -143,7 +146,10 @@ class GoldLayerBuilder:
         batch_id: str,
     ) -> Dict[str, Any]:
         transactions = RawBusinessViews.transactions(spark, raw_vault_path) \
-            .withColumn("valor_decimal", F.col("valor").cast("double"))
+            .withColumn(
+                "valor_decimal",
+                F.col("valor").cast(MONEY_DECIMAL_TYPE),
+            )
         gold = transactions.groupBy(
             F.to_date(F.col("data_transacao")).alias("data"),
             F.col("tipo_transacao"),
@@ -168,7 +174,10 @@ class GoldLayerBuilder:
         batch_id: str,
     ) -> Dict[str, Any]:
         transactions = RawBusinessViews.transactions(spark, raw_vault_path) \
-            .withColumn("valor_decimal", F.col("valor").cast("double"))
+            .withColumn(
+                "valor_decimal",
+                F.col("valor").cast(MONEY_DECIMAL_TYPE),
+            )
         link_transaction_account = read_required_raw_table(
             spark, raw_vault_path, "link", "link_conta_transacao"
         ).select("hk_conta", "hk_transacao")
@@ -235,7 +244,10 @@ class GoldLayerBuilder:
         batch_id: str,
     ) -> Dict[str, Any]:
         accounts = RawBusinessViews.accounts(spark, raw_vault_path) \
-            .withColumn("saldo_decimal", F.col("saldo").cast("double"))
+            .withColumn(
+                "saldo_decimal",
+                F.col("saldo").cast(MONEY_DECIMAL_TYPE),
+            )
         cards = RawBusinessViews.cards(spark, raw_vault_path)
         account_aggregate = accounts.groupBy(
             F.col("tipo_conta").alias("tipo_produto")
@@ -247,7 +259,9 @@ class GoldLayerBuilder:
             F.col("tipo_cartao").alias("tipo_produto")
         ).agg(
             F.count("cartao_id").alias("quantidade"),
-            F.lit(0.0).alias("valor_total"),
+            F.lit(0)
+            .cast(MONEY_TOTAL_DECIMAL_TYPE)
+            .alias("valor_total"),
         ).withColumn("categoria_produto", F.lit("Cartao"))
         gold = account_aggregate.unionByName(card_aggregate)
         return _write_gold(
@@ -294,7 +308,10 @@ class GoldLayerBuilder:
         batch_id: str,
     ) -> Dict[str, Any]:
         accounts = RawBusinessViews.accounts(spark, raw_vault_path) \
-            .withColumn("saldo_decimal", F.col("saldo").cast("double")) \
+            .withColumn(
+                "saldo_decimal",
+                F.col("saldo").cast(MONEY_DECIMAL_TYPE),
+            ) \
             .drop("agencia_id")
         agencies = RawBusinessViews.agencies(spark, raw_vault_path).select(
             "hk_agencia",
@@ -336,10 +353,16 @@ class GoldLayerBuilder:
         batch_id: str,
     ) -> Dict[str, Any]:
         transactions = RawBusinessViews.transactions(spark, raw_vault_path) \
-            .withColumn("valor_decimal", F.col("valor").cast("double")) \
+            .withColumn(
+                "valor_decimal",
+                F.col("valor").cast(MONEY_DECIMAL_TYPE),
+            ) \
             .drop("conta_id")
         accounts = RawBusinessViews.accounts(spark, raw_vault_path) \
-            .withColumn("limite_decimal", F.col("limite").cast("double")) \
+            .withColumn(
+                "limite_decimal",
+                F.col("limite").cast(MONEY_DECIMAL_TYPE),
+            ) \
             .select("hk_conta", "conta_id", "limite_decimal")
         transaction_account = read_required_raw_table(
             spark, raw_vault_path, "link", "link_conta_transacao"
