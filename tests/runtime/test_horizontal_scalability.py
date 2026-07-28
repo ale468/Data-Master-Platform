@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -417,6 +418,65 @@ class HorizontalMetricAndClassificationTests(unittest.TestCase):
 
 
 class HorizontalEvidenceTests(unittest.TestCase):
+    def test_spark_status_api_excludes_raw_stage_names_and_keeps_duration(self):
+        class SparkContext:
+            uiWebUrl = "http://spark-ui"
+            applicationId = "application-test"
+
+        class Spark:
+            sparkContext = SparkContext()
+
+        executors = [
+            {
+                "id": "1",
+                "hostPort": "10.0.0.1:1234",
+                "isActive": True,
+                "totalTasks": 4,
+                "failedTasks": 0,
+                "totalDuration": 1200,
+                "totalInputBytes": 10,
+                "totalShuffleRead": 20,
+                "totalShuffleWrite": 30,
+            }
+        ]
+        stages = [
+            {
+                "stageId": 7,
+                "attemptId": 0,
+                "name": "/opt/spark/work-dir/jobs/private.py:42",
+                "status": "COMPLETE",
+                "submissionTime": "2026-07-28T02:00:00.000GMT",
+                "completionTime": "2026-07-28T02:00:01.250GMT",
+                "executorRunTime": 1100,
+                "numTasks": 4,
+                "inputRecords": 10,
+                "outputRecords": 10,
+                "shuffleReadBytes": 20,
+                "shuffleWriteBytes": 30,
+                "executorSummary": {
+                    "1": {
+                        "inputRecords": 10,
+                        "outputBytes": 40,
+                        "outputRecords": 10,
+                    }
+                },
+            }
+        ]
+        with patch.object(
+            benchmark,
+            "_status_api_json",
+            side_effect=[executors, stages],
+        ):
+            evidence = benchmark._collect_spark_status_api(Spark())
+
+        self.assertEqual(evidence["stages"][0]["duration_ms"], 1250)
+        self.assertEqual(evidence["stages"][0]["executor_runtime_ms"], 1100)
+        self.assertNotIn("name", evidence["stages"][0])
+        self.assertEqual(
+            benchmark.validate_public_horizontal_payload(evidence),
+            [],
+        )
+
     def test_fingerprint_combines_count_and_hash_in_one_spark_action(self):
         source = inspect.getsource(benchmark._table_fingerprint)
         self.assertNotIn("frame.count()", source)

@@ -379,6 +379,30 @@ def _status_api_json(url: str) -> Any:
         return json.loads(response.read().decode("utf-8"))
 
 
+def _spark_stage_duration_ms(stage: Mapping[str, Any]) -> int:
+    submission = str(stage.get("submissionTime", "")).strip()
+    completion = str(stage.get("completionTime", "")).strip()
+    if submission and completion:
+        try:
+            started = datetime.fromisoformat(
+                submission.replace("GMT", "+00:00").replace("Z", "+00:00")
+            )
+            finished = datetime.fromisoformat(
+                completion.replace("GMT", "+00:00").replace("Z", "+00:00")
+            )
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=timezone.utc)
+            if finished.tzinfo is None:
+                finished = finished.replace(tzinfo=timezone.utc)
+            return max(
+                0,
+                int(round((finished - started).total_seconds() * 1000)),
+            )
+        except ValueError:
+            pass
+    return max(0, int(stage.get("executorRunTime", 0)))
+
+
 def _collect_spark_status_api(spark: Any) -> Dict[str, Any]:
     ui_url = spark.sparkContext.uiWebUrl
     if not ui_url:
@@ -424,8 +448,9 @@ def _collect_spark_status_api(spark: Any) -> Dict[str, Any]:
             {
                 "stage_id": int(stage.get("stageId", -1)),
                 "attempt_id": int(stage.get("attemptId", 0)),
-                "name": str(stage.get("name", ""))[:120],
                 "status": str(stage.get("status", "")),
+                "duration_ms": _spark_stage_duration_ms(stage),
+                "executor_runtime_ms": int(stage.get("executorRunTime", 0)),
                 "tasks": int(stage.get("numTasks", 0)),
                 "input_records": int(stage.get("inputRecords", 0)),
                 "output_records": int(stage.get("outputRecords", 0)),
