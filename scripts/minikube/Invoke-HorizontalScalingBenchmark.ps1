@@ -177,12 +177,57 @@ function Get-HorizontalPodSnapshot {
         if ($null -ne $pod.status.PSObject.Properties["podIP"]) {
             $podIp = [string]$pod.status.podIP
         }
+        $restartCount = 0
+        $containerReason = "Unknown"
+        $exitCode = $null
+        $containerStatuses = @()
+        if (
+            $null -ne $pod.status.PSObject.Properties["containerStatuses"]
+        ) {
+            $containerStatuses = @($pod.status.containerStatuses)
+        }
+        if ($containerStatuses.Count -eq 1) {
+            $container = $containerStatuses[0]
+            $restartCount = [int]$container.restartCount
+            if (
+                $null -ne $container.state.PSObject.Properties["terminated"]
+            ) {
+                $containerReason = [string]$container.state.terminated.reason
+                $exitCode = [int]$container.state.terminated.exitCode
+            }
+            elseif (
+                $null -ne $container.state.PSObject.Properties["waiting"]
+            ) {
+                $containerReason = [string]$container.state.waiting.reason
+            }
+            elseif (
+                $null -ne $container.state.PSObject.Properties["running"]
+            ) {
+                $containerReason = "Running"
+            }
+        }
+        $allowedContainerReasons = @(
+            "Running",
+            "Completed",
+            "Error",
+            "OOMKilled",
+            "ContainerCannotRun",
+            "DeadlineExceeded",
+            "Evicted",
+            "Unknown"
+        )
+        if ($containerReason -notin $allowedContainerReasons) {
+            $containerReason = "Other"
+        }
         $snapshot += [pscustomobject]@{
             name = [string]$pod.metadata.name
             role = [string]$pod.metadata.labels."data-master.io/spark-role"
             status = [string]$pod.status.phase
             node = $node
             pod_ip = $podIp
+            restart_count = $restartCount
+            container_reason = $containerReason
+            exit_code = $exitCode
         }
     }
     return $snapshot
@@ -366,8 +411,22 @@ function Invoke-HorizontalApplication {
             }
     )
     if ($markerLines.Count -ne 1) {
+        $driverDiagnostic = $driverPods[0]
+        $executorReasons = @(
+            $executorPods |
+                ForEach-Object { [string]$_.container_reason } |
+                Sort-Object -Unique
+        )
         Throw-HorizontalFail (
-            "Driver did not emit exactly one horizontal workload result."
+            "Driver workload result unavailable; " +
+            "application_state=$state " +
+            "driver_phase=$($driverDiagnostic.status) " +
+            "driver_container_reason=$($driverDiagnostic.container_reason) " +
+            "driver_exit_code=$($driverDiagnostic.exit_code) " +
+            "driver_restarts=$($driverDiagnostic.restart_count) " +
+            "executor_container_reasons=$($executorReasons -join ',') " +
+            "minio_status=$($sharedStorage.status) " +
+            "minio_restarts=$($sharedStorage.restart_count)."
         )
     }
     $payloadText = ([string]$markerLines[0]).Substring(
