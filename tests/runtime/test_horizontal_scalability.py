@@ -652,6 +652,9 @@ class HorizontalEvidenceTests(unittest.TestCase):
             "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
             source,
         )
+        self.assertIn("Import-DataMasterDockerImageStream", source)
+        self.assertIn("HORIZONTAL_RUNTIME_IMAGE_IMPORT=STREAM", source)
+        self.assertNotIn('"image", "load"', source)
         self.assertIn("docker container rm --force", source)
         self.assertIn("$secretAttempt -le 3", source)
         self.assertIn("Invoke-HorizontalKubernetesRead", source)

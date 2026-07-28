@@ -15,61 +15,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "DataMaster.Minikube.Common.ps1")
 
-function Import-DataMasterDockerImageStream {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Image,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Profile
-    )
-
-    $saveInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $saveInfo.FileName = "docker.exe"
-    $saveInfo.Arguments = "image save $Image"
-    $saveInfo.UseShellExecute = $false
-    $saveInfo.RedirectStandardOutput = $true
-    $saveInfo.CreateNoWindow = $true
-
-    $loadInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $loadInfo.FileName = "docker.exe"
-    $loadInfo.Arguments = (
-        "exec -i $Profile docker image load"
-    )
-    $loadInfo.UseShellExecute = $false
-    $loadInfo.RedirectStandardInput = $true
-    $loadInfo.CreateNoWindow = $true
-
-    $saveProcess = New-Object System.Diagnostics.Process
-    $loadProcess = New-Object System.Diagnostics.Process
-    $saveProcess.StartInfo = $saveInfo
-    $loadProcess.StartInfo = $loadInfo
-    try {
-        if (-not $loadProcess.Start()) {
-            throw "Unable to start Docker runtime image load for: $Image"
-        }
-        if (-not $saveProcess.Start()) {
-            throw "Unable to start Docker save for: $Image"
-        }
-        $saveProcess.StandardOutput.BaseStream.CopyTo(
-            $loadProcess.StandardInput.BaseStream
-        )
-        $loadProcess.StandardInput.Close()
-        $saveProcess.WaitForExit()
-        $loadProcess.WaitForExit()
-        if ($saveProcess.ExitCode -ne 0 -or $loadProcess.ExitCode -ne 0) {
-            throw (
-                "Streaming image import failed for '$Image': " +
-                "save=$($saveProcess.ExitCode), load=$($loadProcess.ExitCode)"
-            )
-        }
-    }
-    finally {
-        $saveProcess.Dispose()
-        $loadProcess.Dispose()
-    }
-}
-
 Assert-DataMasterSafeProfile -Profile $Profile
 if (-not $Tag) {
     $Tag = Get-DataMasterImageTag

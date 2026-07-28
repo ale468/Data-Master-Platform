@@ -371,6 +371,9 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         importer = (SCRIPTS / "Import-DataMasterImages.ps1").read_text(
             encoding="utf-8"
         )
+        common = (SCRIPTS / "DataMaster.Minikube.Common.ps1").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("-PreloadRuntimeDependencies", clean_room)
         for image in (
             "postgres:15",
@@ -384,9 +387,17 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertIn("MINIKUBE_RUNTIME_DEPENDENCY_IMPORT_STATUS=PASS", importer)
         self.assertIn("docker images --quiet $image", importer)
         self.assertIn("Import-DataMasterDockerImageStream", importer)
-        self.assertIn("docker image load", importer)
+        self.assertNotIn(
+            "function Import-DataMasterDockerImageStream",
+            importer,
+        )
+        self.assertIn(
+            "function Import-DataMasterDockerImageStream",
+            common,
+        )
+        self.assertIn("docker image load", common)
         self.assertIn("docker\", \"image\", \"inspect\"", importer)
-        self.assertIn("BaseStream.CopyTo", importer)
+        self.assertIn("BaseStream.CopyTo", common)
 
     def test_ready_helper_waits_for_statefulsets_by_namespace(self):
         ready_helper = (SCRIPTS / "Wait-DataMasterReady.ps1").read_text(

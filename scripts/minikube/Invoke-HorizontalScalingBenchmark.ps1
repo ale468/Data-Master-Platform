@@ -693,11 +693,24 @@ try {
     $script:ProfileCreatedByRun = $true
     Set-DataMasterMinikubeContext -Profile $Profile
 
-    Invoke-DataMasterNative -FilePath "minikube" -Arguments @(
-        "image", "load",
-        "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
-        "--profile", $Profile
+    $sparkOperatorImage = (
+        "ghcr.io/kubeflow/spark-operator/controller:2.5.0"
     )
+    $sparkOperatorImageIds = @(
+        & docker images --quiet $sparkOperatorImage
+    )
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect the local Spark Operator image."
+    }
+    if ($sparkOperatorImageIds.Count -eq 0) {
+        Invoke-DataMasterNative -FilePath "docker" -Arguments @(
+            "pull", $sparkOperatorImage
+        )
+    }
+    Import-DataMasterDockerImageStream `
+        -Image $sparkOperatorImage `
+        -Profile $Profile
+    Write-Output "HORIZONTAL_RUNTIME_IMAGE_IMPORT=STREAM"
 
     $namespaceManifest = New-TemporaryFile
     try {
