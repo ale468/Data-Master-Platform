@@ -634,6 +634,12 @@ try {
     $script:ProfileCreatedByRun = $true
     Set-DataMasterMinikubeContext -Profile $Profile
 
+    Invoke-DataMasterNative -FilePath "minikube" -Arguments @(
+        "image", "load",
+        "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
+        "--profile", $Profile
+    )
+
     $namespaceManifest = New-TemporaryFile
     try {
         $namespaceYaml = @(

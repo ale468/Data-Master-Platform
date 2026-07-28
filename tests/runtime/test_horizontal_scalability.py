@@ -606,6 +606,10 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("data-master.io/run-id=$($Run.run_id)", source)
         self.assertIn("minikube delete --profile $Profile", source)
         self.assertIn("host.minikube.internal:5000", source)
+        self.assertIn(
+            "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
+            source,
+        )
         self.assertIn("docker container rm --force", source)
         self.assertIn("$secretAttempt -le 3", source)
         self.assertIn("Invoke-HorizontalKubernetesRead", source)
