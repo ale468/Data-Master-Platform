@@ -536,6 +536,11 @@ class HorizontalEvidenceTests(unittest.TestCase):
             / "Invoke-HorizontalScalingBenchmark.ps1"
         ).read_text(encoding="utf-8")
         self.assertIn("Git worktree must be clean", source)
+        self.assertIn("Docker engine is unavailable", source)
+        self.assertLess(
+            source.index("dockerMemoryText"),
+            source.index("profileInventoryText"),
+        )
         self.assertIn("Target Minikube profile already exists", source)
         self.assertIn("data-master.io/run-id=", source)
         self.assertIn("data-master.io/run-id=$($Run.run_id)", source)

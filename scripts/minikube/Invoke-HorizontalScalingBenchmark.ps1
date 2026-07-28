@@ -486,6 +486,25 @@ try {
         throw "Unable to resolve exact Git SHA."
     }
 
+    try {
+        $dockerMemoryText = Invoke-DataMasterNative `
+            -FilePath "docker" `
+            -CaptureOutput `
+            -Arguments @("info", "--format", "{{.MemTotal}}")
+    }
+    catch {
+        Throw-HorizontalBlocked (
+            "Docker engine is unavailable; start Docker before running the benchmark."
+        )
+    }
+    $dockerMemory = [int64]($dockerMemoryText | Select-Object -Last 1)
+    $dockerMemoryGiB = [math]::Floor($dockerMemory / 1GB)
+    if ($dockerMemoryGiB -lt 11) {
+        Throw-HorizontalBlocked (
+            "At least 11 GiB Docker memory is required; observed $dockerMemoryGiB GiB."
+        )
+    }
+
     $profileInventoryText = @(
         Invoke-DataMasterNative -FilePath "minikube" -CaptureOutput -Arguments @(
             "profile", "list", "--output=json"
@@ -512,19 +531,6 @@ try {
     if ($memoryGiB -lt 16) {
         Throw-HorizontalBlocked (
             "At least 16 GiB host memory is required; observed $memoryGiB GiB."
-        )
-    }
-    $dockerMemory = [int64](
-        (
-            Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Arguments @(
-                "info", "--format", "{{.MemTotal}}"
-            )
-        ) | Select-Object -Last 1
-    )
-    $dockerMemoryGiB = [math]::Floor($dockerMemory / 1GB)
-    if ($dockerMemoryGiB -lt 11) {
-        Throw-HorizontalBlocked (
-            "At least 11 GiB Docker memory is required; observed $dockerMemoryGiB GiB."
         )
     }
     $freeDiskGiB = [math]::Floor((Get-PSDrive -Name C).Free / 1GB)
