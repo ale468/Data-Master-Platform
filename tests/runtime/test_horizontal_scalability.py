@@ -466,12 +466,20 @@ class HorizontalEvidenceTests(unittest.TestCase):
             benchmark,
             "_status_api_json",
             side_effect=[executors, stages],
-        ):
+        ) as status_api:
             evidence = benchmark._collect_spark_status_api(Spark())
 
+        self.assertTrue(
+            status_api.call_args_list[1].args[0].endswith(
+                "/stages?details=true"
+            )
+        )
         self.assertEqual(evidence["stages"][0]["duration_ms"], 1250)
         self.assertEqual(evidence["stages"][0]["executor_runtime_ms"], 1100)
         self.assertNotIn("name", evidence["stages"][0])
+        self.assertEqual(evidence["executors"][0]["input_records"], 10)
+        self.assertEqual(evidence["executors"][0]["output_bytes"], 40)
+        self.assertEqual(evidence["executors"][0]["output_records"], 10)
         self.assertEqual(
             benchmark.validate_public_horizontal_payload(evidence),
             [],
@@ -493,6 +501,20 @@ class HorizontalEvidenceTests(unittest.TestCase):
             "executor_pod_count_mismatch",
             combined_result["validation_failures"],
         )
+
+    def test_executor_without_input_or_output_metrics_fails(self):
+        payload = workload(benchmark.SCALE_OUT_PROFILE, 6)
+        payload["spark_api"]["executors"][0].update(
+            {
+                "input_bytes": 0,
+                "input_records": 0,
+                "output_bytes": 0,
+                "output_records": 0,
+            }
+        )
+        failures = benchmark._validate_workload_payload(payload)
+        self.assertIn("executor_without_input_metrics", failures)
+        self.assertIn("executor_without_output_metrics", failures)
 
     def test_tasks_concentrated_in_one_executor_fails(self):
         payload = workload(benchmark.SCALE_OUT_PROFILE, 6)

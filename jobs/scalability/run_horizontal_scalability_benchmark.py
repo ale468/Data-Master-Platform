@@ -410,7 +410,7 @@ def _collect_spark_status_api(spark: Any) -> Dict[str, Any]:
     application_id = str(spark.sparkContext.applicationId)
     base = f"{ui_url.rstrip('/')}/api/v1/applications/{application_id}"
     executors = _status_api_json(base + "/executors")
-    stages = _status_api_json(base + "/stages")
+    stages = _status_api_json(base + "/stages?details=true")
 
     executor_metrics: Dict[str, Dict[str, Any]] = {}
     for executor in executors:
@@ -518,6 +518,18 @@ def _validate_workload_payload(payload: Mapping[str, Any]) -> List[str]:
         failures.append("spark_api_executor_count_mismatch")
     if any(int(item.get("tasks", 0)) <= 0 for item in api_executors):
         failures.append("executor_without_tasks")
+    if any(
+        int(item.get("input_bytes", 0)) <= 0
+        and int(item.get("input_records", 0)) <= 0
+        for item in api_executors
+    ):
+        failures.append("executor_without_input_metrics")
+    if any(
+        int(item.get("output_bytes", 0)) <= 0
+        and int(item.get("output_records", 0)) <= 0
+        for item in api_executors
+    ):
+        failures.append("executor_without_output_metrics")
     failures.extend(validate_public_horizontal_payload(payload))
     return list(dict.fromkeys(failures))
 
