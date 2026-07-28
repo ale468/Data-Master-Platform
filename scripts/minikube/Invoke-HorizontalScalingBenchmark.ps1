@@ -287,8 +287,8 @@ function Invoke-HorizontalApplication {
         "--repetition", [string]$Run.repetition,
         "--output", $containerManifestPath
     )
-    Invoke-HorizontalPython -Arguments $renderArguments
-    Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
+    $null = Invoke-HorizontalPython -Arguments $renderArguments
+    $null = Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
         "apply", "--filename", $manifestPath
     )
 
@@ -420,13 +420,13 @@ function Invoke-HorizontalApplication {
         )
     }
 
-    Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
+    $null = Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
         "delete", "sparkapplication", $applicationName,
         "--namespace", "data-platform",
         "--wait=true",
         "--timeout=120s"
     )
-    Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
+    $null = Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
         "delete", "pod",
         "--namespace", "data-platform",
         "--selector", "data-master.io/run-id=$($Run.run_id)",

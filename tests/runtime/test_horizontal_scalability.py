@@ -624,6 +624,18 @@ class HorizontalEvidenceTests(unittest.TestCase):
         self.assertIn("go_memory_limit", source)
         self.assertIn("$plan.infrastructure.minio", source)
         self.assertIn("$script:HorizontalExitBlocked = 5", source)
+        application_function = source.split(
+            "function Invoke-HorizontalApplication",
+            1,
+        )[1].split("\n$root = Get-DataMasterRepositoryRoot", 1)[0]
+        self.assertIn(
+            "$null = Invoke-HorizontalPython -Arguments $renderArguments",
+            application_function,
+        )
+        self.assertGreaterEqual(
+            application_function.count("$null = Invoke-DataMasterNative"),
+            3,
+        )
         self.assertNotIn("local[*]", source)
 
     def test_shared_storage_restart_fails_evidence(self):
