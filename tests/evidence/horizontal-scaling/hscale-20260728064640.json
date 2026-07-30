@@ -1,0 +1,2193 @@
+{
+  "baseline": {
+    "executors_observed": [
+      1
+    ],
+    "executors_requested": 1,
+    "median_duration_seconds": 1839.091,
+    "median_throughput_records_per_second": 176.871,
+    "nodes_observed": [
+      "data-master-horizontal-20260728064640"
+    ],
+    "profile_id": "minikube-horizontal-1",
+    "runs": [
+      {
+        "batch_id": "batch-1-e1",
+        "benchmark_id": "hscale-20260728094640",
+        "benchmark_kind": "static-horizontal-spark-scale-out",
+        "change_id": "DM-RUN-004",
+        "dataset_fingerprint": "sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e",
+        "dataset_seed": 42,
+        "dataset_volume": "controlled-horizontal-v1",
+        "driver_pods_observed": 1,
+        "duration_seconds": 1794.212,
+        "executor_evidence": {
+          "executors": [
+            {
+              "executor_id": "1",
+              "failed_tasks": 0,
+              "host": "10.244.0.10",
+              "input_bytes": 931706081,
+              "input_records": 6267570,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 1564032,
+              "output_records": 85265,
+              "pod": "banking-data-vault-pipeline-54cf369fa8436337-exec-1",
+              "pod_status": "Succeeded",
+              "runtime_ms": 1451221,
+              "shuffle_read_bytes": 306497874,
+              "shuffle_write_bytes": 306498794,
+              "status": "ACTIVE",
+              "tasks": 19607
+            }
+          ],
+          "executors_observed": 1,
+          "executors_requested": 1,
+          "nodes_observed": [
+            "data-master-horizontal-20260728064640"
+          ],
+          "tasks_distributed": true
+        },
+        "executors_requested": 1,
+        "functional_fingerprints": {
+          "bronze": {
+            "fingerprint": "sha256:e9c0dcb1ce5af1d7175d1b6ce85331b4686559a78a1703848576a686160868c5",
+            "tables": {
+              "agencias": {
+                "fingerprint": "sha256:01263c352c86e1e413a7327492f9b13abc8e9ee5b936cbe061e3fca13797808f",
+                "row_count": 100
+              },
+              "cartoes": {
+                "fingerprint": "sha256:1bded16d01b53c471ad84c6a07bdf4eb252525a798a6d34faceceb5c1a629d89",
+                "row_count": 10044
+              },
+              "clientes": {
+                "fingerprint": "sha256:7b9304e6a26ab591052135fce7b96b9a94e5639d4b18f1d531a73b6618b5d157",
+                "row_count": 5000
+              },
+              "contas": {
+                "fingerprint": "sha256:37a1510d70d34f8d7cdab788d57dd4a0f67f6aac0abc83df03da94ea674d8257",
+                "row_count": 10087
+              },
+              "eventos_digitais": {
+                "fingerprint": "sha256:2eb4596ed5baa3880731f81b75453318a05079913ecd2dbdf1427016ec38772a",
+                "row_count": 200000
+              },
+              "produtos": {
+                "fingerprint": "sha256:58fed5912a1ee09849a80bef3044275d853ff1a28ce6d3db0724ba365d12d73c",
+                "row_count": 50
+              },
+              "transacoes": {
+                "fingerprint": "sha256:a21f420145bb026bae53693a0e8996a3066484f515af5e6e2634673d03efce0e",
+                "row_count": 100000
+              }
+            }
+          },
+          "gold": {
+            "fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+            "tables": {
+              "gold_clientes_protegidos": {
+                "fingerprint": "sha256:dfa91153f15c6c14afb1aa28675e0c8c3cd6d32985fff9b7b4cc74726cf81819",
+                "row_count": 5000
+              },
+              "gold_contas_por_agencia": {
+                "fingerprint": "sha256:028073c802aaf040179380e9fc93a970e0820ef3d03fbae771558db197383abe",
+                "row_count": 100
+              },
+              "gold_eventos_digitais_por_canal": {
+                "fingerprint": "sha256:472c40c40b8dfe24992152e005fb1cdbf1d51d9bf5fd68d39dcd2c77ede20506",
+                "row_count": 90
+              },
+              "gold_risco_transacional_simplificado": {
+                "fingerprint": "sha256:7893ce28ec5fe073b6a150d49544d16d5ba9e77f8f137a0cca4248c0d30a37f5",
+                "row_count": 85164
+              },
+              "gold_transacoes_por_cliente": {
+                "fingerprint": "sha256:f2550628bd42b831095cb6b41e78899d04e1a37e68b1ba3c9984e5d4a21ecc8a",
+                "row_count": 5000
+              },
+              "gold_transacoes_por_dia": {
+                "fingerprint": "sha256:2e99d2b17c26ba9855e86c0d505d7fffbbe259f605425e692312ff70c9628aac",
+                "row_count": 124
+              },
+              "gold_volume_por_produto": {
+                "fingerprint": "sha256:c7ff5cd02e69c6d4c81f9ef8475eb73553e987cc9be482147f6d557b0ced68b7",
+                "row_count": 6
+              }
+            }
+          },
+          "raw_vault_hubs": {
+            "fingerprint": "sha256:2696c93974127faff8b96c9629390738ace61974561d01ac08147090190c80e8",
+            "tables": {
+              "hub_agencia": {
+                "fingerprint": "sha256:3e247e8098fdc4ba721c8ade51b027d9ffc157cc1620919bb049c03c36f026ca",
+                "row_count": 100
+              },
+              "hub_canal_digital": {
+                "fingerprint": "sha256:cda981c2216ab9fd0961380a7a4fe4ff1b67116c52b7c62c162a7e6edb540e46",
+                "row_count": 5
+              },
+              "hub_cartao": {
+                "fingerprint": "sha256:9d51d5c508e2c681a7135cb0039cd355052e2dbfb1a2241fa6c554ffbfa2cbb6",
+                "row_count": 10044
+              },
+              "hub_cliente": {
+                "fingerprint": "sha256:635f1188ce4e67da668968fd1de7e767c53723ad540bc33713d5434d34a0be3b",
+                "row_count": 5000
+              },
+              "hub_conta": {
+                "fingerprint": "sha256:af85812d6fd517b765736460ec8f9b4077d2dddd2b33d37fdd80acdf905968d6",
+                "row_count": 10087
+              },
+              "hub_produto": {
+                "fingerprint": "sha256:bad5c1752ff2dc3557c1701f82e29b42797e36e89d468e600285619ff9ec9fc6",
+                "row_count": 50
+              },
+              "hub_transacao": {
+                "fingerprint": "sha256:47e8f2f8debfc9a86dd70affe335fe5778ffc9fad5ccfb586b32f80b3adf1920",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_links": {
+            "fingerprint": "sha256:8c60cd9adc21abcfd69dc7d49f32c396c121c90b391f0340e4b3a876d23048c5",
+            "tables": {
+              "link_cartao_transacao": {
+                "fingerprint": "sha256:cf67b6ab8f7ece978dee56829da33886136aa78dc54bc0d6f214ec74280463c7",
+                "row_count": 29998
+              },
+              "link_cliente_cartao": {
+                "fingerprint": "sha256:f8fc74c2f13caeeb4056bf0d8ca0db45dddabed6dde291d4dee883e81a245338",
+                "row_count": 10044
+              },
+              "link_cliente_conta": {
+                "fingerprint": "sha256:afbf90c8536a7b75350ca365c2a7a77b6fb6a8d71dcc89f35be8648162bdc180",
+                "row_count": 10087
+              },
+              "link_cliente_evento_digital": {
+                "fingerprint": "sha256:7c33072f77f52e31a589cdcbe5fe02680df170ea9c20263763e95b4bf161cb3a",
+                "row_count": 24991
+              },
+              "link_conta_agencia": {
+                "fingerprint": "sha256:378b0e6f47f0bb47cf74f011032f064cc79b3808b2b7ba46134c1dd3dbcd9b26",
+                "row_count": 10087
+              },
+              "link_conta_produto": {
+                "fingerprint": "sha256:8ec65322ac48b4f13fcb730cb5e88fc58782a58620eb39b4aa74bc7890584ef3",
+                "row_count": 10087
+              },
+              "link_conta_transacao": {
+                "fingerprint": "sha256:3008e1728c290589de30baaa13e76875c42d12eaf4f3b0eae2ade30c94ea8ceb",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_satellites": {
+            "fingerprint": "sha256:9d68ca28ef1749485254cd3279d7926f76e694a5cea6f04984960b1f8043df3f",
+            "tables": {
+              "sat_agencia_detalhes": {
+                "fingerprint": "sha256:3c57f8f0660f4fda4351e89604d0be3eeb3bb7ae6385a2fc3ac19645087074e1",
+                "row_count": 100
+              },
+              "sat_cartao_detalhes": {
+                "fingerprint": "sha256:80f46971e11150b1b83d227d20583bf2b47e54344a31be1fcaacb4d57b763cc7",
+                "row_count": 10044
+              },
+              "sat_cliente_dados_cadastrais": {
+                "fingerprint": "sha256:daf6a7b3c8be5ba4a67d7b57e61b24c71e8b00f22a23afca044785d01ebcbc57",
+                "row_count": 5000
+              },
+              "sat_cliente_documentos": {
+                "fingerprint": "sha256:af8118086328802644e0555c4378e5811c3bcb8b1eec222ce9bf5be28652b18e",
+                "row_count": 5000
+              },
+              "sat_conta_detalhes": {
+                "fingerprint": "sha256:b6a17b31818b35380ae4d369f7b51b612e9481f1a13a168ef46031103526ee8a",
+                "row_count": 10087
+              },
+              "sat_evento_digital_detalhes": {
+                "fingerprint": "sha256:4a5fdca8fb67a7bca6a02ddc865c55533a32adb7f9a9378e5577bad7ce995ae2",
+                "row_count": 200000
+              },
+              "sat_produto_detalhes": {
+                "fingerprint": "sha256:a05d1d76355c97ef6c9d20afeb74ea2254408207ded15e04721671e8a376355c",
+                "row_count": 50
+              },
+              "sat_transacao_detalhes": {
+                "fingerprint": "sha256:9636fa19576417339906fe554060566098c52394103f11f38ae7fa0c7fb85569",
+                "row_count": 100000
+              }
+            }
+          }
+        },
+        "git_sha": "ee198106abda668a833826ace0e16f4e56516025",
+        "image_digest": "sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac",
+        "input_rows": 325281,
+        "layer_counts": {
+          "bronze": 325281,
+          "gold": 95484,
+          "raw_vault_hubs": 125286,
+          "raw_vault_links": 195294,
+          "raw_vault_satellites": 330281
+        },
+        "lineage": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "lineage": "PASS"
+          },
+          "status": "PASS"
+        },
+        "masking": {
+          "failure_categories": {
+            "client_check_failures": 0,
+            "forbidden_columns": 0,
+            "protected_check_failures": 0,
+            "raw_pattern_hits": 0,
+            "risk_check_failures": 0,
+            "sample_failures": 0
+          },
+          "failure_count": 0,
+          "status": "PASS",
+          "tables_checked": 7
+        },
+        "measurement_kind": "measurement",
+        "monitoring": {
+          "event_count": 5,
+          "status": "PASS"
+        },
+        "output_fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+        "pipeline_contract_version": "data-master-pipeline-v1",
+        "profile_id": "minikube-horizontal-1",
+        "quality": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "gold_path_separation": "PASS",
+            "gold_storage": "PASS",
+            "hubs": "PASS",
+            "lgpd_reference": "PASS",
+            "lineage": "PASS",
+            "links": "PASS",
+            "satellites": "PASS"
+          },
+          "failed_checks": [],
+          "status": "PASS"
+        },
+        "repetition": 1,
+        "run_id": "measure-1-e1",
+        "schema_version": 1,
+        "secret_findings": 0,
+        "shared_storage": {
+          "pod_count": 1,
+          "restart_count": 0,
+          "status": "PASS"
+        },
+        "source_counts": {
+          "agencias": 100,
+          "cartoes": 10044,
+          "clientes": 5000,
+          "contas": 10087,
+          "eventos_digitais": 200000,
+          "produtos": 50,
+          "transacoes": 100000
+        },
+        "spark": {
+          "dynamic_allocation": false,
+          "executor_instances": 1,
+          "executor_memory": "1g",
+          "master": "k8s://https://kubernetes.default.svc",
+          "shuffle_partitions": 24
+        },
+        "stage_durations": [
+          {
+            "duration_seconds": 179.755,
+            "name": "bronze",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 166.696,
+            "name": "hubs",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 148.406,
+            "name": "links",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 143.216,
+            "name": "satellites",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 362.101,
+            "name": "gold",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 554.726,
+            "name": "data-vault-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 84.99,
+            "name": "masking-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 33.09,
+            "name": "metrics",
+            "status": "PASS"
+          }
+        ],
+        "status": "PASS",
+        "throughput_records_per_second": 181.295,
+        "topology": "single-node-application-scale-out",
+        "validation_failures": []
+      },
+      {
+        "batch_id": "batch-2-e1",
+        "benchmark_id": "hscale-20260728094640",
+        "benchmark_kind": "static-horizontal-spark-scale-out",
+        "change_id": "DM-RUN-004",
+        "dataset_fingerprint": "sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e",
+        "dataset_seed": 42,
+        "dataset_volume": "controlled-horizontal-v1",
+        "driver_pods_observed": 1,
+        "duration_seconds": 1839.091,
+        "executor_evidence": {
+          "executors": [
+            {
+              "executor_id": "1",
+              "failed_tasks": 0,
+              "host": "10.244.0.20",
+              "input_bytes": 931657790,
+              "input_records": 6267570,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 1564032,
+              "output_records": 85265,
+              "pod": "banking-data-vault-pipeline-afd5db9fa889c4a8-exec-1",
+              "pod_status": "Succeeded",
+              "runtime_ms": 1479313,
+              "shuffle_read_bytes": 306494917,
+              "shuffle_write_bytes": 306495837,
+              "status": "ACTIVE",
+              "tasks": 19607
+            }
+          ],
+          "executors_observed": 1,
+          "executors_requested": 1,
+          "nodes_observed": [
+            "data-master-horizontal-20260728064640"
+          ],
+          "tasks_distributed": true
+        },
+        "executors_requested": 1,
+        "functional_fingerprints": {
+          "bronze": {
+            "fingerprint": "sha256:e9c0dcb1ce5af1d7175d1b6ce85331b4686559a78a1703848576a686160868c5",
+            "tables": {
+              "agencias": {
+                "fingerprint": "sha256:01263c352c86e1e413a7327492f9b13abc8e9ee5b936cbe061e3fca13797808f",
+                "row_count": 100
+              },
+              "cartoes": {
+                "fingerprint": "sha256:1bded16d01b53c471ad84c6a07bdf4eb252525a798a6d34faceceb5c1a629d89",
+                "row_count": 10044
+              },
+              "clientes": {
+                "fingerprint": "sha256:7b9304e6a26ab591052135fce7b96b9a94e5639d4b18f1d531a73b6618b5d157",
+                "row_count": 5000
+              },
+              "contas": {
+                "fingerprint": "sha256:37a1510d70d34f8d7cdab788d57dd4a0f67f6aac0abc83df03da94ea674d8257",
+                "row_count": 10087
+              },
+              "eventos_digitais": {
+                "fingerprint": "sha256:2eb4596ed5baa3880731f81b75453318a05079913ecd2dbdf1427016ec38772a",
+                "row_count": 200000
+              },
+              "produtos": {
+                "fingerprint": "sha256:58fed5912a1ee09849a80bef3044275d853ff1a28ce6d3db0724ba365d12d73c",
+                "row_count": 50
+              },
+              "transacoes": {
+                "fingerprint": "sha256:a21f420145bb026bae53693a0e8996a3066484f515af5e6e2634673d03efce0e",
+                "row_count": 100000
+              }
+            }
+          },
+          "gold": {
+            "fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+            "tables": {
+              "gold_clientes_protegidos": {
+                "fingerprint": "sha256:dfa91153f15c6c14afb1aa28675e0c8c3cd6d32985fff9b7b4cc74726cf81819",
+                "row_count": 5000
+              },
+              "gold_contas_por_agencia": {
+                "fingerprint": "sha256:028073c802aaf040179380e9fc93a970e0820ef3d03fbae771558db197383abe",
+                "row_count": 100
+              },
+              "gold_eventos_digitais_por_canal": {
+                "fingerprint": "sha256:472c40c40b8dfe24992152e005fb1cdbf1d51d9bf5fd68d39dcd2c77ede20506",
+                "row_count": 90
+              },
+              "gold_risco_transacional_simplificado": {
+                "fingerprint": "sha256:7893ce28ec5fe073b6a150d49544d16d5ba9e77f8f137a0cca4248c0d30a37f5",
+                "row_count": 85164
+              },
+              "gold_transacoes_por_cliente": {
+                "fingerprint": "sha256:f2550628bd42b831095cb6b41e78899d04e1a37e68b1ba3c9984e5d4a21ecc8a",
+                "row_count": 5000
+              },
+              "gold_transacoes_por_dia": {
+                "fingerprint": "sha256:2e99d2b17c26ba9855e86c0d505d7fffbbe259f605425e692312ff70c9628aac",
+                "row_count": 124
+              },
+              "gold_volume_por_produto": {
+                "fingerprint": "sha256:c7ff5cd02e69c6d4c81f9ef8475eb73553e987cc9be482147f6d557b0ced68b7",
+                "row_count": 6
+              }
+            }
+          },
+          "raw_vault_hubs": {
+            "fingerprint": "sha256:2696c93974127faff8b96c9629390738ace61974561d01ac08147090190c80e8",
+            "tables": {
+              "hub_agencia": {
+                "fingerprint": "sha256:3e247e8098fdc4ba721c8ade51b027d9ffc157cc1620919bb049c03c36f026ca",
+                "row_count": 100
+              },
+              "hub_canal_digital": {
+                "fingerprint": "sha256:cda981c2216ab9fd0961380a7a4fe4ff1b67116c52b7c62c162a7e6edb540e46",
+                "row_count": 5
+              },
+              "hub_cartao": {
+                "fingerprint": "sha256:9d51d5c508e2c681a7135cb0039cd355052e2dbfb1a2241fa6c554ffbfa2cbb6",
+                "row_count": 10044
+              },
+              "hub_cliente": {
+                "fingerprint": "sha256:635f1188ce4e67da668968fd1de7e767c53723ad540bc33713d5434d34a0be3b",
+                "row_count": 5000
+              },
+              "hub_conta": {
+                "fingerprint": "sha256:af85812d6fd517b765736460ec8f9b4077d2dddd2b33d37fdd80acdf905968d6",
+                "row_count": 10087
+              },
+              "hub_produto": {
+                "fingerprint": "sha256:bad5c1752ff2dc3557c1701f82e29b42797e36e89d468e600285619ff9ec9fc6",
+                "row_count": 50
+              },
+              "hub_transacao": {
+                "fingerprint": "sha256:47e8f2f8debfc9a86dd70affe335fe5778ffc9fad5ccfb586b32f80b3adf1920",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_links": {
+            "fingerprint": "sha256:8c60cd9adc21abcfd69dc7d49f32c396c121c90b391f0340e4b3a876d23048c5",
+            "tables": {
+              "link_cartao_transacao": {
+                "fingerprint": "sha256:cf67b6ab8f7ece978dee56829da33886136aa78dc54bc0d6f214ec74280463c7",
+                "row_count": 29998
+              },
+              "link_cliente_cartao": {
+                "fingerprint": "sha256:f8fc74c2f13caeeb4056bf0d8ca0db45dddabed6dde291d4dee883e81a245338",
+                "row_count": 10044
+              },
+              "link_cliente_conta": {
+                "fingerprint": "sha256:afbf90c8536a7b75350ca365c2a7a77b6fb6a8d71dcc89f35be8648162bdc180",
+                "row_count": 10087
+              },
+              "link_cliente_evento_digital": {
+                "fingerprint": "sha256:7c33072f77f52e31a589cdcbe5fe02680df170ea9c20263763e95b4bf161cb3a",
+                "row_count": 24991
+              },
+              "link_conta_agencia": {
+                "fingerprint": "sha256:378b0e6f47f0bb47cf74f011032f064cc79b3808b2b7ba46134c1dd3dbcd9b26",
+                "row_count": 10087
+              },
+              "link_conta_produto": {
+                "fingerprint": "sha256:8ec65322ac48b4f13fcb730cb5e88fc58782a58620eb39b4aa74bc7890584ef3",
+                "row_count": 10087
+              },
+              "link_conta_transacao": {
+                "fingerprint": "sha256:3008e1728c290589de30baaa13e76875c42d12eaf4f3b0eae2ade30c94ea8ceb",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_satellites": {
+            "fingerprint": "sha256:9d68ca28ef1749485254cd3279d7926f76e694a5cea6f04984960b1f8043df3f",
+            "tables": {
+              "sat_agencia_detalhes": {
+                "fingerprint": "sha256:3c57f8f0660f4fda4351e89604d0be3eeb3bb7ae6385a2fc3ac19645087074e1",
+                "row_count": 100
+              },
+              "sat_cartao_detalhes": {
+                "fingerprint": "sha256:80f46971e11150b1b83d227d20583bf2b47e54344a31be1fcaacb4d57b763cc7",
+                "row_count": 10044
+              },
+              "sat_cliente_dados_cadastrais": {
+                "fingerprint": "sha256:daf6a7b3c8be5ba4a67d7b57e61b24c71e8b00f22a23afca044785d01ebcbc57",
+                "row_count": 5000
+              },
+              "sat_cliente_documentos": {
+                "fingerprint": "sha256:af8118086328802644e0555c4378e5811c3bcb8b1eec222ce9bf5be28652b18e",
+                "row_count": 5000
+              },
+              "sat_conta_detalhes": {
+                "fingerprint": "sha256:b6a17b31818b35380ae4d369f7b51b612e9481f1a13a168ef46031103526ee8a",
+                "row_count": 10087
+              },
+              "sat_evento_digital_detalhes": {
+                "fingerprint": "sha256:4a5fdca8fb67a7bca6a02ddc865c55533a32adb7f9a9378e5577bad7ce995ae2",
+                "row_count": 200000
+              },
+              "sat_produto_detalhes": {
+                "fingerprint": "sha256:a05d1d76355c97ef6c9d20afeb74ea2254408207ded15e04721671e8a376355c",
+                "row_count": 50
+              },
+              "sat_transacao_detalhes": {
+                "fingerprint": "sha256:9636fa19576417339906fe554060566098c52394103f11f38ae7fa0c7fb85569",
+                "row_count": 100000
+              }
+            }
+          }
+        },
+        "git_sha": "ee198106abda668a833826ace0e16f4e56516025",
+        "image_digest": "sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac",
+        "input_rows": 325281,
+        "layer_counts": {
+          "bronze": 325281,
+          "gold": 95484,
+          "raw_vault_hubs": 125286,
+          "raw_vault_links": 195294,
+          "raw_vault_satellites": 330281
+        },
+        "lineage": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "lineage": "PASS"
+          },
+          "status": "PASS"
+        },
+        "masking": {
+          "failure_categories": {
+            "client_check_failures": 0,
+            "forbidden_columns": 0,
+            "protected_check_failures": 0,
+            "raw_pattern_hits": 0,
+            "risk_check_failures": 0,
+            "sample_failures": 0
+          },
+          "failure_count": 0,
+          "status": "PASS",
+          "tables_checked": 7
+        },
+        "measurement_kind": "measurement",
+        "monitoring": {
+          "event_count": 5,
+          "status": "PASS"
+        },
+        "output_fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+        "pipeline_contract_version": "data-master-pipeline-v1",
+        "profile_id": "minikube-horizontal-1",
+        "quality": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "gold_path_separation": "PASS",
+            "gold_storage": "PASS",
+            "hubs": "PASS",
+            "lgpd_reference": "PASS",
+            "lineage": "PASS",
+            "links": "PASS",
+            "satellites": "PASS"
+          },
+          "failed_checks": [],
+          "status": "PASS"
+        },
+        "repetition": 2,
+        "run_id": "measure-2-e1",
+        "schema_version": 1,
+        "secret_findings": 0,
+        "shared_storage": {
+          "pod_count": 1,
+          "restart_count": 0,
+          "status": "PASS"
+        },
+        "source_counts": {
+          "agencias": 100,
+          "cartoes": 10044,
+          "clientes": 5000,
+          "contas": 10087,
+          "eventos_digitais": 200000,
+          "produtos": 50,
+          "transacoes": 100000
+        },
+        "spark": {
+          "dynamic_allocation": false,
+          "executor_instances": 1,
+          "executor_memory": "1g",
+          "master": "k8s://https://kubernetes.default.svc",
+          "shuffle_partitions": 24
+        },
+        "stage_durations": [
+          {
+            "duration_seconds": 187.335,
+            "name": "bronze",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 161.469,
+            "name": "hubs",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 154.934,
+            "name": "links",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 145.358,
+            "name": "satellites",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 357.006,
+            "name": "gold",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 581.535,
+            "name": "data-vault-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 86.556,
+            "name": "masking-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 38.013,
+            "name": "metrics",
+            "status": "PASS"
+          }
+        ],
+        "status": "PASS",
+        "throughput_records_per_second": 176.871,
+        "topology": "single-node-application-scale-out",
+        "validation_failures": []
+      },
+      {
+        "batch_id": "batch-3-e1",
+        "benchmark_id": "hscale-20260728094640",
+        "benchmark_kind": "static-horizontal-spark-scale-out",
+        "change_id": "DM-RUN-004",
+        "dataset_fingerprint": "sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e",
+        "dataset_seed": 42,
+        "dataset_volume": "controlled-horizontal-v1",
+        "driver_pods_observed": 1,
+        "duration_seconds": 1840.697,
+        "executor_evidence": {
+          "executors": [
+            {
+              "executor_id": "1",
+              "failed_tasks": 0,
+              "host": "10.244.0.22",
+              "input_bytes": 931685643,
+              "input_records": 6267570,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 1564030,
+              "output_records": 85265,
+              "pod": "banking-data-vault-pipeline-47e62d9fa8a7218a-exec-1",
+              "pod_status": "Succeeded",
+              "runtime_ms": 1501552,
+              "shuffle_read_bytes": 306492878,
+              "shuffle_write_bytes": 306493798,
+              "status": "ACTIVE",
+              "tasks": 19607
+            }
+          ],
+          "executors_observed": 1,
+          "executors_requested": 1,
+          "nodes_observed": [
+            "data-master-horizontal-20260728064640"
+          ],
+          "tasks_distributed": true
+        },
+        "executors_requested": 1,
+        "functional_fingerprints": {
+          "bronze": {
+            "fingerprint": "sha256:e9c0dcb1ce5af1d7175d1b6ce85331b4686559a78a1703848576a686160868c5",
+            "tables": {
+              "agencias": {
+                "fingerprint": "sha256:01263c352c86e1e413a7327492f9b13abc8e9ee5b936cbe061e3fca13797808f",
+                "row_count": 100
+              },
+              "cartoes": {
+                "fingerprint": "sha256:1bded16d01b53c471ad84c6a07bdf4eb252525a798a6d34faceceb5c1a629d89",
+                "row_count": 10044
+              },
+              "clientes": {
+                "fingerprint": "sha256:7b9304e6a26ab591052135fce7b96b9a94e5639d4b18f1d531a73b6618b5d157",
+                "row_count": 5000
+              },
+              "contas": {
+                "fingerprint": "sha256:37a1510d70d34f8d7cdab788d57dd4a0f67f6aac0abc83df03da94ea674d8257",
+                "row_count": 10087
+              },
+              "eventos_digitais": {
+                "fingerprint": "sha256:2eb4596ed5baa3880731f81b75453318a05079913ecd2dbdf1427016ec38772a",
+                "row_count": 200000
+              },
+              "produtos": {
+                "fingerprint": "sha256:58fed5912a1ee09849a80bef3044275d853ff1a28ce6d3db0724ba365d12d73c",
+                "row_count": 50
+              },
+              "transacoes": {
+                "fingerprint": "sha256:a21f420145bb026bae53693a0e8996a3066484f515af5e6e2634673d03efce0e",
+                "row_count": 100000
+              }
+            }
+          },
+          "gold": {
+            "fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+            "tables": {
+              "gold_clientes_protegidos": {
+                "fingerprint": "sha256:dfa91153f15c6c14afb1aa28675e0c8c3cd6d32985fff9b7b4cc74726cf81819",
+                "row_count": 5000
+              },
+              "gold_contas_por_agencia": {
+                "fingerprint": "sha256:028073c802aaf040179380e9fc93a970e0820ef3d03fbae771558db197383abe",
+                "row_count": 100
+              },
+              "gold_eventos_digitais_por_canal": {
+                "fingerprint": "sha256:472c40c40b8dfe24992152e005fb1cdbf1d51d9bf5fd68d39dcd2c77ede20506",
+                "row_count": 90
+              },
+              "gold_risco_transacional_simplificado": {
+                "fingerprint": "sha256:7893ce28ec5fe073b6a150d49544d16d5ba9e77f8f137a0cca4248c0d30a37f5",
+                "row_count": 85164
+              },
+              "gold_transacoes_por_cliente": {
+                "fingerprint": "sha256:f2550628bd42b831095cb6b41e78899d04e1a37e68b1ba3c9984e5d4a21ecc8a",
+                "row_count": 5000
+              },
+              "gold_transacoes_por_dia": {
+                "fingerprint": "sha256:2e99d2b17c26ba9855e86c0d505d7fffbbe259f605425e692312ff70c9628aac",
+                "row_count": 124
+              },
+              "gold_volume_por_produto": {
+                "fingerprint": "sha256:c7ff5cd02e69c6d4c81f9ef8475eb73553e987cc9be482147f6d557b0ced68b7",
+                "row_count": 6
+              }
+            }
+          },
+          "raw_vault_hubs": {
+            "fingerprint": "sha256:2696c93974127faff8b96c9629390738ace61974561d01ac08147090190c80e8",
+            "tables": {
+              "hub_agencia": {
+                "fingerprint": "sha256:3e247e8098fdc4ba721c8ade51b027d9ffc157cc1620919bb049c03c36f026ca",
+                "row_count": 100
+              },
+              "hub_canal_digital": {
+                "fingerprint": "sha256:cda981c2216ab9fd0961380a7a4fe4ff1b67116c52b7c62c162a7e6edb540e46",
+                "row_count": 5
+              },
+              "hub_cartao": {
+                "fingerprint": "sha256:9d51d5c508e2c681a7135cb0039cd355052e2dbfb1a2241fa6c554ffbfa2cbb6",
+                "row_count": 10044
+              },
+              "hub_cliente": {
+                "fingerprint": "sha256:635f1188ce4e67da668968fd1de7e767c53723ad540bc33713d5434d34a0be3b",
+                "row_count": 5000
+              },
+              "hub_conta": {
+                "fingerprint": "sha256:af85812d6fd517b765736460ec8f9b4077d2dddd2b33d37fdd80acdf905968d6",
+                "row_count": 10087
+              },
+              "hub_produto": {
+                "fingerprint": "sha256:bad5c1752ff2dc3557c1701f82e29b42797e36e89d468e600285619ff9ec9fc6",
+                "row_count": 50
+              },
+              "hub_transacao": {
+                "fingerprint": "sha256:47e8f2f8debfc9a86dd70affe335fe5778ffc9fad5ccfb586b32f80b3adf1920",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_links": {
+            "fingerprint": "sha256:8c60cd9adc21abcfd69dc7d49f32c396c121c90b391f0340e4b3a876d23048c5",
+            "tables": {
+              "link_cartao_transacao": {
+                "fingerprint": "sha256:cf67b6ab8f7ece978dee56829da33886136aa78dc54bc0d6f214ec74280463c7",
+                "row_count": 29998
+              },
+              "link_cliente_cartao": {
+                "fingerprint": "sha256:f8fc74c2f13caeeb4056bf0d8ca0db45dddabed6dde291d4dee883e81a245338",
+                "row_count": 10044
+              },
+              "link_cliente_conta": {
+                "fingerprint": "sha256:afbf90c8536a7b75350ca365c2a7a77b6fb6a8d71dcc89f35be8648162bdc180",
+                "row_count": 10087
+              },
+              "link_cliente_evento_digital": {
+                "fingerprint": "sha256:7c33072f77f52e31a589cdcbe5fe02680df170ea9c20263763e95b4bf161cb3a",
+                "row_count": 24991
+              },
+              "link_conta_agencia": {
+                "fingerprint": "sha256:378b0e6f47f0bb47cf74f011032f064cc79b3808b2b7ba46134c1dd3dbcd9b26",
+                "row_count": 10087
+              },
+              "link_conta_produto": {
+                "fingerprint": "sha256:8ec65322ac48b4f13fcb730cb5e88fc58782a58620eb39b4aa74bc7890584ef3",
+                "row_count": 10087
+              },
+              "link_conta_transacao": {
+                "fingerprint": "sha256:3008e1728c290589de30baaa13e76875c42d12eaf4f3b0eae2ade30c94ea8ceb",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_satellites": {
+            "fingerprint": "sha256:9d68ca28ef1749485254cd3279d7926f76e694a5cea6f04984960b1f8043df3f",
+            "tables": {
+              "sat_agencia_detalhes": {
+                "fingerprint": "sha256:3c57f8f0660f4fda4351e89604d0be3eeb3bb7ae6385a2fc3ac19645087074e1",
+                "row_count": 100
+              },
+              "sat_cartao_detalhes": {
+                "fingerprint": "sha256:80f46971e11150b1b83d227d20583bf2b47e54344a31be1fcaacb4d57b763cc7",
+                "row_count": 10044
+              },
+              "sat_cliente_dados_cadastrais": {
+                "fingerprint": "sha256:daf6a7b3c8be5ba4a67d7b57e61b24c71e8b00f22a23afca044785d01ebcbc57",
+                "row_count": 5000
+              },
+              "sat_cliente_documentos": {
+                "fingerprint": "sha256:af8118086328802644e0555c4378e5811c3bcb8b1eec222ce9bf5be28652b18e",
+                "row_count": 5000
+              },
+              "sat_conta_detalhes": {
+                "fingerprint": "sha256:b6a17b31818b35380ae4d369f7b51b612e9481f1a13a168ef46031103526ee8a",
+                "row_count": 10087
+              },
+              "sat_evento_digital_detalhes": {
+                "fingerprint": "sha256:4a5fdca8fb67a7bca6a02ddc865c55533a32adb7f9a9378e5577bad7ce995ae2",
+                "row_count": 200000
+              },
+              "sat_produto_detalhes": {
+                "fingerprint": "sha256:a05d1d76355c97ef6c9d20afeb74ea2254408207ded15e04721671e8a376355c",
+                "row_count": 50
+              },
+              "sat_transacao_detalhes": {
+                "fingerprint": "sha256:9636fa19576417339906fe554060566098c52394103f11f38ae7fa0c7fb85569",
+                "row_count": 100000
+              }
+            }
+          }
+        },
+        "git_sha": "ee198106abda668a833826ace0e16f4e56516025",
+        "image_digest": "sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac",
+        "input_rows": 325281,
+        "layer_counts": {
+          "bronze": 325281,
+          "gold": 95484,
+          "raw_vault_hubs": 125286,
+          "raw_vault_links": 195294,
+          "raw_vault_satellites": 330281
+        },
+        "lineage": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "lineage": "PASS"
+          },
+          "status": "PASS"
+        },
+        "masking": {
+          "failure_categories": {
+            "client_check_failures": 0,
+            "forbidden_columns": 0,
+            "protected_check_failures": 0,
+            "raw_pattern_hits": 0,
+            "risk_check_failures": 0,
+            "sample_failures": 0
+          },
+          "failure_count": 0,
+          "status": "PASS",
+          "tables_checked": 7
+        },
+        "measurement_kind": "measurement",
+        "monitoring": {
+          "event_count": 5,
+          "status": "PASS"
+        },
+        "output_fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+        "pipeline_contract_version": "data-master-pipeline-v1",
+        "profile_id": "minikube-horizontal-1",
+        "quality": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "gold_path_separation": "PASS",
+            "gold_storage": "PASS",
+            "hubs": "PASS",
+            "lgpd_reference": "PASS",
+            "lineage": "PASS",
+            "links": "PASS",
+            "satellites": "PASS"
+          },
+          "failed_checks": [],
+          "status": "PASS"
+        },
+        "repetition": 3,
+        "run_id": "measure-3-e1",
+        "schema_version": 1,
+        "secret_findings": 0,
+        "shared_storage": {
+          "pod_count": 1,
+          "restart_count": 0,
+          "status": "PASS"
+        },
+        "source_counts": {
+          "agencias": 100,
+          "cartoes": 10044,
+          "clientes": 5000,
+          "contas": 10087,
+          "eventos_digitais": 200000,
+          "produtos": 50,
+          "transacoes": 100000
+        },
+        "spark": {
+          "dynamic_allocation": false,
+          "executor_instances": 1,
+          "executor_memory": "1g",
+          "master": "k8s://https://kubernetes.default.svc",
+          "shuffle_partitions": 24
+        },
+        "stage_durations": [
+          {
+            "duration_seconds": 192.827,
+            "name": "bronze",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 151.267,
+            "name": "hubs",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 168.15,
+            "name": "links",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 138.195,
+            "name": "satellites",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 360.939,
+            "name": "gold",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 579.267,
+            "name": "data-vault-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 90.247,
+            "name": "masking-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 34.818,
+            "name": "metrics",
+            "status": "PASS"
+          }
+        ],
+        "status": "PASS",
+        "throughput_records_per_second": 176.716,
+        "topology": "single-node-application-scale-out",
+        "validation_failures": []
+      }
+    ]
+  },
+  "benchmark_id": "hscale-20260728094640",
+  "benchmark_kind": "static-horizontal-spark-scale-out",
+  "change_id": "DM-RUN-004",
+  "experiment": {
+    "baseline_profile": "minikube-horizontal-1",
+    "controlled_infrastructure": {
+      "minikube": {
+        "cpus": 4,
+        "disk_size": "40g",
+        "memory_mib": 11264
+      },
+      "minio": {
+        "go_memory_limit": "2GiB",
+        "persistence_size": "20Gi",
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "2560Mi"
+          },
+          "requests": {
+            "cpu": "200m",
+            "memory": "512Mi"
+          }
+        }
+      }
+    },
+    "measurements_per_profile": 3,
+    "primary_variable": "spark.executor_instances",
+    "scale_out_profile": "minikube-horizontal-3",
+    "statistic": "median",
+    "warmups_discarded": 1
+  },
+  "failures": [],
+  "functional_equivalence": {
+    "dataset_fingerprint": true,
+    "functional_fingerprints": true,
+    "git_sha": true,
+    "image_digest": true,
+    "input_rows": true,
+    "layer_counts": true,
+    "output_fingerprint": true,
+    "pipeline_contract_version": true,
+    "source_counts": true
+  },
+  "generated_at": "2026-07-28T13:10:54.216392+00:00",
+  "limitations": [
+    "Minikube is a local environment.",
+    "Executor pods on one node prove application scale-out, not physical node distribution.",
+    "This run does not establish production readiness, SLA, cost, or production sizing.",
+    "Dynamic allocation and horizontal autoscaling were not implemented.",
+    "No cloud environment was executed."
+  ],
+  "measurable_benefit": true,
+  "parallel_efficiency": 0.477,
+  "result": "PASS",
+  "scale_out": {
+    "executors_observed": [
+      3
+    ],
+    "executors_requested": 3,
+    "median_duration_seconds": 1286.373,
+    "median_throughput_records_per_second": 252.867,
+    "nodes_observed": [
+      "data-master-horizontal-20260728064640"
+    ],
+    "profile_id": "minikube-horizontal-3",
+    "runs": [
+      {
+        "batch_id": "batch-1-e3",
+        "benchmark_id": "hscale-20260728094640",
+        "benchmark_kind": "static-horizontal-spark-scale-out",
+        "change_id": "DM-RUN-004",
+        "dataset_fingerprint": "sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e",
+        "dataset_seed": 42,
+        "dataset_volume": "controlled-horizontal-v1",
+        "driver_pods_observed": 1,
+        "duration_seconds": 1286.373,
+        "executor_evidence": {
+          "executors": [
+            {
+              "executor_id": "1",
+              "failed_tasks": 0,
+              "host": "10.244.0.12",
+              "input_bytes": 344121579,
+              "input_records": 2292516,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 525148,
+              "output_records": 28500,
+              "pod": "banking-data-vault-pipeline-116a519fa86001b1-exec-1",
+              "pod_status": "Succeeded",
+              "runtime_ms": 679008,
+              "shuffle_read_bytes": 101827819,
+              "shuffle_write_bytes": 107710751,
+              "status": "ACTIVE",
+              "tasks": 6385
+            },
+            {
+              "executor_id": "2",
+              "failed_tasks": 0,
+              "host": "10.244.0.13",
+              "input_bytes": 300985543,
+              "input_records": 1987947,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 454898,
+              "output_records": 24725,
+              "pod": "banking-data-vault-pipeline-116a519fa86001b1-exec-2",
+              "pod_status": "Succeeded",
+              "runtime_ms": 657259,
+              "shuffle_read_bytes": 90857946,
+              "shuffle_write_bytes": 82789601,
+              "status": "ACTIVE",
+              "tasks": 6148
+            },
+            {
+              "executor_id": "3",
+              "failed_tasks": 0,
+              "host": "10.244.0.14",
+              "input_bytes": 286704845,
+              "input_records": 1987122,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 582125,
+              "output_records": 32040,
+              "pod": "banking-data-vault-pipeline-116a519fa86001b1-exec-3",
+              "pod_status": "Succeeded",
+              "runtime_ms": 668090,
+              "shuffle_read_bytes": 114033910,
+              "shuffle_write_bytes": 116220243,
+              "status": "ACTIVE",
+              "tasks": 7347
+            }
+          ],
+          "executors_observed": 3,
+          "executors_requested": 3,
+          "nodes_observed": [
+            "data-master-horizontal-20260728064640"
+          ],
+          "tasks_distributed": true
+        },
+        "executors_requested": 3,
+        "functional_fingerprints": {
+          "bronze": {
+            "fingerprint": "sha256:e9c0dcb1ce5af1d7175d1b6ce85331b4686559a78a1703848576a686160868c5",
+            "tables": {
+              "agencias": {
+                "fingerprint": "sha256:01263c352c86e1e413a7327492f9b13abc8e9ee5b936cbe061e3fca13797808f",
+                "row_count": 100
+              },
+              "cartoes": {
+                "fingerprint": "sha256:1bded16d01b53c471ad84c6a07bdf4eb252525a798a6d34faceceb5c1a629d89",
+                "row_count": 10044
+              },
+              "clientes": {
+                "fingerprint": "sha256:7b9304e6a26ab591052135fce7b96b9a94e5639d4b18f1d531a73b6618b5d157",
+                "row_count": 5000
+              },
+              "contas": {
+                "fingerprint": "sha256:37a1510d70d34f8d7cdab788d57dd4a0f67f6aac0abc83df03da94ea674d8257",
+                "row_count": 10087
+              },
+              "eventos_digitais": {
+                "fingerprint": "sha256:2eb4596ed5baa3880731f81b75453318a05079913ecd2dbdf1427016ec38772a",
+                "row_count": 200000
+              },
+              "produtos": {
+                "fingerprint": "sha256:58fed5912a1ee09849a80bef3044275d853ff1a28ce6d3db0724ba365d12d73c",
+                "row_count": 50
+              },
+              "transacoes": {
+                "fingerprint": "sha256:a21f420145bb026bae53693a0e8996a3066484f515af5e6e2634673d03efce0e",
+                "row_count": 100000
+              }
+            }
+          },
+          "gold": {
+            "fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+            "tables": {
+              "gold_clientes_protegidos": {
+                "fingerprint": "sha256:dfa91153f15c6c14afb1aa28675e0c8c3cd6d32985fff9b7b4cc74726cf81819",
+                "row_count": 5000
+              },
+              "gold_contas_por_agencia": {
+                "fingerprint": "sha256:028073c802aaf040179380e9fc93a970e0820ef3d03fbae771558db197383abe",
+                "row_count": 100
+              },
+              "gold_eventos_digitais_por_canal": {
+                "fingerprint": "sha256:472c40c40b8dfe24992152e005fb1cdbf1d51d9bf5fd68d39dcd2c77ede20506",
+                "row_count": 90
+              },
+              "gold_risco_transacional_simplificado": {
+                "fingerprint": "sha256:7893ce28ec5fe073b6a150d49544d16d5ba9e77f8f137a0cca4248c0d30a37f5",
+                "row_count": 85164
+              },
+              "gold_transacoes_por_cliente": {
+                "fingerprint": "sha256:f2550628bd42b831095cb6b41e78899d04e1a37e68b1ba3c9984e5d4a21ecc8a",
+                "row_count": 5000
+              },
+              "gold_transacoes_por_dia": {
+                "fingerprint": "sha256:2e99d2b17c26ba9855e86c0d505d7fffbbe259f605425e692312ff70c9628aac",
+                "row_count": 124
+              },
+              "gold_volume_por_produto": {
+                "fingerprint": "sha256:c7ff5cd02e69c6d4c81f9ef8475eb73553e987cc9be482147f6d557b0ced68b7",
+                "row_count": 6
+              }
+            }
+          },
+          "raw_vault_hubs": {
+            "fingerprint": "sha256:2696c93974127faff8b96c9629390738ace61974561d01ac08147090190c80e8",
+            "tables": {
+              "hub_agencia": {
+                "fingerprint": "sha256:3e247e8098fdc4ba721c8ade51b027d9ffc157cc1620919bb049c03c36f026ca",
+                "row_count": 100
+              },
+              "hub_canal_digital": {
+                "fingerprint": "sha256:cda981c2216ab9fd0961380a7a4fe4ff1b67116c52b7c62c162a7e6edb540e46",
+                "row_count": 5
+              },
+              "hub_cartao": {
+                "fingerprint": "sha256:9d51d5c508e2c681a7135cb0039cd355052e2dbfb1a2241fa6c554ffbfa2cbb6",
+                "row_count": 10044
+              },
+              "hub_cliente": {
+                "fingerprint": "sha256:635f1188ce4e67da668968fd1de7e767c53723ad540bc33713d5434d34a0be3b",
+                "row_count": 5000
+              },
+              "hub_conta": {
+                "fingerprint": "sha256:af85812d6fd517b765736460ec8f9b4077d2dddd2b33d37fdd80acdf905968d6",
+                "row_count": 10087
+              },
+              "hub_produto": {
+                "fingerprint": "sha256:bad5c1752ff2dc3557c1701f82e29b42797e36e89d468e600285619ff9ec9fc6",
+                "row_count": 50
+              },
+              "hub_transacao": {
+                "fingerprint": "sha256:47e8f2f8debfc9a86dd70affe335fe5778ffc9fad5ccfb586b32f80b3adf1920",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_links": {
+            "fingerprint": "sha256:8c60cd9adc21abcfd69dc7d49f32c396c121c90b391f0340e4b3a876d23048c5",
+            "tables": {
+              "link_cartao_transacao": {
+                "fingerprint": "sha256:cf67b6ab8f7ece978dee56829da33886136aa78dc54bc0d6f214ec74280463c7",
+                "row_count": 29998
+              },
+              "link_cliente_cartao": {
+                "fingerprint": "sha256:f8fc74c2f13caeeb4056bf0d8ca0db45dddabed6dde291d4dee883e81a245338",
+                "row_count": 10044
+              },
+              "link_cliente_conta": {
+                "fingerprint": "sha256:afbf90c8536a7b75350ca365c2a7a77b6fb6a8d71dcc89f35be8648162bdc180",
+                "row_count": 10087
+              },
+              "link_cliente_evento_digital": {
+                "fingerprint": "sha256:7c33072f77f52e31a589cdcbe5fe02680df170ea9c20263763e95b4bf161cb3a",
+                "row_count": 24991
+              },
+              "link_conta_agencia": {
+                "fingerprint": "sha256:378b0e6f47f0bb47cf74f011032f064cc79b3808b2b7ba46134c1dd3dbcd9b26",
+                "row_count": 10087
+              },
+              "link_conta_produto": {
+                "fingerprint": "sha256:8ec65322ac48b4f13fcb730cb5e88fc58782a58620eb39b4aa74bc7890584ef3",
+                "row_count": 10087
+              },
+              "link_conta_transacao": {
+                "fingerprint": "sha256:3008e1728c290589de30baaa13e76875c42d12eaf4f3b0eae2ade30c94ea8ceb",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_satellites": {
+            "fingerprint": "sha256:9d68ca28ef1749485254cd3279d7926f76e694a5cea6f04984960b1f8043df3f",
+            "tables": {
+              "sat_agencia_detalhes": {
+                "fingerprint": "sha256:3c57f8f0660f4fda4351e89604d0be3eeb3bb7ae6385a2fc3ac19645087074e1",
+                "row_count": 100
+              },
+              "sat_cartao_detalhes": {
+                "fingerprint": "sha256:80f46971e11150b1b83d227d20583bf2b47e54344a31be1fcaacb4d57b763cc7",
+                "row_count": 10044
+              },
+              "sat_cliente_dados_cadastrais": {
+                "fingerprint": "sha256:daf6a7b3c8be5ba4a67d7b57e61b24c71e8b00f22a23afca044785d01ebcbc57",
+                "row_count": 5000
+              },
+              "sat_cliente_documentos": {
+                "fingerprint": "sha256:af8118086328802644e0555c4378e5811c3bcb8b1eec222ce9bf5be28652b18e",
+                "row_count": 5000
+              },
+              "sat_conta_detalhes": {
+                "fingerprint": "sha256:b6a17b31818b35380ae4d369f7b51b612e9481f1a13a168ef46031103526ee8a",
+                "row_count": 10087
+              },
+              "sat_evento_digital_detalhes": {
+                "fingerprint": "sha256:4a5fdca8fb67a7bca6a02ddc865c55533a32adb7f9a9378e5577bad7ce995ae2",
+                "row_count": 200000
+              },
+              "sat_produto_detalhes": {
+                "fingerprint": "sha256:a05d1d76355c97ef6c9d20afeb74ea2254408207ded15e04721671e8a376355c",
+                "row_count": 50
+              },
+              "sat_transacao_detalhes": {
+                "fingerprint": "sha256:9636fa19576417339906fe554060566098c52394103f11f38ae7fa0c7fb85569",
+                "row_count": 100000
+              }
+            }
+          }
+        },
+        "git_sha": "ee198106abda668a833826ace0e16f4e56516025",
+        "image_digest": "sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac",
+        "input_rows": 325281,
+        "layer_counts": {
+          "bronze": 325281,
+          "gold": 95484,
+          "raw_vault_hubs": 125286,
+          "raw_vault_links": 195294,
+          "raw_vault_satellites": 330281
+        },
+        "lineage": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "lineage": "PASS"
+          },
+          "status": "PASS"
+        },
+        "masking": {
+          "failure_categories": {
+            "client_check_failures": 0,
+            "forbidden_columns": 0,
+            "protected_check_failures": 0,
+            "raw_pattern_hits": 0,
+            "risk_check_failures": 0,
+            "sample_failures": 0
+          },
+          "failure_count": 0,
+          "status": "PASS",
+          "tables_checked": 7
+        },
+        "measurement_kind": "measurement",
+        "monitoring": {
+          "event_count": 5,
+          "status": "PASS"
+        },
+        "output_fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+        "pipeline_contract_version": "data-master-pipeline-v1",
+        "profile_id": "minikube-horizontal-3",
+        "quality": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "gold_path_separation": "PASS",
+            "gold_storage": "PASS",
+            "hubs": "PASS",
+            "lgpd_reference": "PASS",
+            "lineage": "PASS",
+            "links": "PASS",
+            "satellites": "PASS"
+          },
+          "failed_checks": [],
+          "status": "PASS"
+        },
+        "repetition": 1,
+        "run_id": "measure-1-e3",
+        "schema_version": 1,
+        "secret_findings": 0,
+        "shared_storage": {
+          "pod_count": 1,
+          "restart_count": 0,
+          "status": "PASS"
+        },
+        "source_counts": {
+          "agencias": 100,
+          "cartoes": 10044,
+          "clientes": 5000,
+          "contas": 10087,
+          "eventos_digitais": 200000,
+          "produtos": 50,
+          "transacoes": 100000
+        },
+        "spark": {
+          "dynamic_allocation": false,
+          "executor_instances": 3,
+          "executor_memory": "1g",
+          "master": "k8s://https://kubernetes.default.svc",
+          "shuffle_partitions": 24
+        },
+        "stage_durations": [
+          {
+            "duration_seconds": 215.029,
+            "name": "bronze",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 172.441,
+            "name": "hubs",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 155.031,
+            "name": "links",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 133.238,
+            "name": "satellites",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 194.924,
+            "name": "gold",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 275.21,
+            "name": "data-vault-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 40.298,
+            "name": "masking-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 35.626,
+            "name": "metrics",
+            "status": "PASS"
+          }
+        ],
+        "status": "PASS",
+        "throughput_records_per_second": 252.867,
+        "topology": "single-node-application-scale-out",
+        "validation_failures": []
+      },
+      {
+        "batch_id": "batch-2-e3",
+        "benchmark_id": "hscale-20260728094640",
+        "benchmark_kind": "static-horizontal-spark-scale-out",
+        "change_id": "DM-RUN-004",
+        "dataset_fingerprint": "sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e",
+        "dataset_seed": 42,
+        "dataset_volume": "controlled-horizontal-v1",
+        "driver_pods_observed": 1,
+        "duration_seconds": 1283.205,
+        "executor_evidence": {
+          "executors": [
+            {
+              "executor_id": "1",
+              "failed_tasks": 0,
+              "host": "10.244.0.16",
+              "input_bytes": 457599420,
+              "input_records": 1979502,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 518483,
+              "output_records": 28365,
+              "pod": "banking-data-vault-pipeline-2665139fa87515d2-exec-1",
+              "pod_status": "Succeeded",
+              "runtime_ms": 676034,
+              "shuffle_read_bytes": 89769761,
+              "shuffle_write_bytes": 84998424,
+              "status": "ACTIVE",
+              "tasks": 6721
+            },
+            {
+              "executor_id": "2",
+              "failed_tasks": 0,
+              "host": "10.244.0.17",
+              "input_bytes": 250558265,
+              "input_records": 2183833,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 457031,
+              "output_records": 24867,
+              "pod": "banking-data-vault-pipeline-2665139fa87515d2-exec-2",
+              "pod_status": "Succeeded",
+              "runtime_ms": 692602,
+              "shuffle_read_bytes": 130447618,
+              "shuffle_write_bytes": 129422907,
+              "status": "ACTIVE",
+              "tasks": 6530
+            },
+            {
+              "executor_id": "3",
+              "failed_tasks": 0,
+              "host": "10.244.0.18",
+              "input_bytes": 223666547,
+              "input_records": 2104250,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 586553,
+              "output_records": 32033,
+              "pod": "banking-data-vault-pipeline-2665139fa87515d2-exec-3",
+              "pod_status": "Succeeded",
+              "runtime_ms": 635916,
+              "shuffle_read_bytes": 86501275,
+              "shuffle_write_bytes": 92298243,
+              "status": "ACTIVE",
+              "tasks": 6629
+            }
+          ],
+          "executors_observed": 3,
+          "executors_requested": 3,
+          "nodes_observed": [
+            "data-master-horizontal-20260728064640"
+          ],
+          "tasks_distributed": true
+        },
+        "executors_requested": 3,
+        "functional_fingerprints": {
+          "bronze": {
+            "fingerprint": "sha256:e9c0dcb1ce5af1d7175d1b6ce85331b4686559a78a1703848576a686160868c5",
+            "tables": {
+              "agencias": {
+                "fingerprint": "sha256:01263c352c86e1e413a7327492f9b13abc8e9ee5b936cbe061e3fca13797808f",
+                "row_count": 100
+              },
+              "cartoes": {
+                "fingerprint": "sha256:1bded16d01b53c471ad84c6a07bdf4eb252525a798a6d34faceceb5c1a629d89",
+                "row_count": 10044
+              },
+              "clientes": {
+                "fingerprint": "sha256:7b9304e6a26ab591052135fce7b96b9a94e5639d4b18f1d531a73b6618b5d157",
+                "row_count": 5000
+              },
+              "contas": {
+                "fingerprint": "sha256:37a1510d70d34f8d7cdab788d57dd4a0f67f6aac0abc83df03da94ea674d8257",
+                "row_count": 10087
+              },
+              "eventos_digitais": {
+                "fingerprint": "sha256:2eb4596ed5baa3880731f81b75453318a05079913ecd2dbdf1427016ec38772a",
+                "row_count": 200000
+              },
+              "produtos": {
+                "fingerprint": "sha256:58fed5912a1ee09849a80bef3044275d853ff1a28ce6d3db0724ba365d12d73c",
+                "row_count": 50
+              },
+              "transacoes": {
+                "fingerprint": "sha256:a21f420145bb026bae53693a0e8996a3066484f515af5e6e2634673d03efce0e",
+                "row_count": 100000
+              }
+            }
+          },
+          "gold": {
+            "fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+            "tables": {
+              "gold_clientes_protegidos": {
+                "fingerprint": "sha256:dfa91153f15c6c14afb1aa28675e0c8c3cd6d32985fff9b7b4cc74726cf81819",
+                "row_count": 5000
+              },
+              "gold_contas_por_agencia": {
+                "fingerprint": "sha256:028073c802aaf040179380e9fc93a970e0820ef3d03fbae771558db197383abe",
+                "row_count": 100
+              },
+              "gold_eventos_digitais_por_canal": {
+                "fingerprint": "sha256:472c40c40b8dfe24992152e005fb1cdbf1d51d9bf5fd68d39dcd2c77ede20506",
+                "row_count": 90
+              },
+              "gold_risco_transacional_simplificado": {
+                "fingerprint": "sha256:7893ce28ec5fe073b6a150d49544d16d5ba9e77f8f137a0cca4248c0d30a37f5",
+                "row_count": 85164
+              },
+              "gold_transacoes_por_cliente": {
+                "fingerprint": "sha256:f2550628bd42b831095cb6b41e78899d04e1a37e68b1ba3c9984e5d4a21ecc8a",
+                "row_count": 5000
+              },
+              "gold_transacoes_por_dia": {
+                "fingerprint": "sha256:2e99d2b17c26ba9855e86c0d505d7fffbbe259f605425e692312ff70c9628aac",
+                "row_count": 124
+              },
+              "gold_volume_por_produto": {
+                "fingerprint": "sha256:c7ff5cd02e69c6d4c81f9ef8475eb73553e987cc9be482147f6d557b0ced68b7",
+                "row_count": 6
+              }
+            }
+          },
+          "raw_vault_hubs": {
+            "fingerprint": "sha256:2696c93974127faff8b96c9629390738ace61974561d01ac08147090190c80e8",
+            "tables": {
+              "hub_agencia": {
+                "fingerprint": "sha256:3e247e8098fdc4ba721c8ade51b027d9ffc157cc1620919bb049c03c36f026ca",
+                "row_count": 100
+              },
+              "hub_canal_digital": {
+                "fingerprint": "sha256:cda981c2216ab9fd0961380a7a4fe4ff1b67116c52b7c62c162a7e6edb540e46",
+                "row_count": 5
+              },
+              "hub_cartao": {
+                "fingerprint": "sha256:9d51d5c508e2c681a7135cb0039cd355052e2dbfb1a2241fa6c554ffbfa2cbb6",
+                "row_count": 10044
+              },
+              "hub_cliente": {
+                "fingerprint": "sha256:635f1188ce4e67da668968fd1de7e767c53723ad540bc33713d5434d34a0be3b",
+                "row_count": 5000
+              },
+              "hub_conta": {
+                "fingerprint": "sha256:af85812d6fd517b765736460ec8f9b4077d2dddd2b33d37fdd80acdf905968d6",
+                "row_count": 10087
+              },
+              "hub_produto": {
+                "fingerprint": "sha256:bad5c1752ff2dc3557c1701f82e29b42797e36e89d468e600285619ff9ec9fc6",
+                "row_count": 50
+              },
+              "hub_transacao": {
+                "fingerprint": "sha256:47e8f2f8debfc9a86dd70affe335fe5778ffc9fad5ccfb586b32f80b3adf1920",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_links": {
+            "fingerprint": "sha256:8c60cd9adc21abcfd69dc7d49f32c396c121c90b391f0340e4b3a876d23048c5",
+            "tables": {
+              "link_cartao_transacao": {
+                "fingerprint": "sha256:cf67b6ab8f7ece978dee56829da33886136aa78dc54bc0d6f214ec74280463c7",
+                "row_count": 29998
+              },
+              "link_cliente_cartao": {
+                "fingerprint": "sha256:f8fc74c2f13caeeb4056bf0d8ca0db45dddabed6dde291d4dee883e81a245338",
+                "row_count": 10044
+              },
+              "link_cliente_conta": {
+                "fingerprint": "sha256:afbf90c8536a7b75350ca365c2a7a77b6fb6a8d71dcc89f35be8648162bdc180",
+                "row_count": 10087
+              },
+              "link_cliente_evento_digital": {
+                "fingerprint": "sha256:7c33072f77f52e31a589cdcbe5fe02680df170ea9c20263763e95b4bf161cb3a",
+                "row_count": 24991
+              },
+              "link_conta_agencia": {
+                "fingerprint": "sha256:378b0e6f47f0bb47cf74f011032f064cc79b3808b2b7ba46134c1dd3dbcd9b26",
+                "row_count": 10087
+              },
+              "link_conta_produto": {
+                "fingerprint": "sha256:8ec65322ac48b4f13fcb730cb5e88fc58782a58620eb39b4aa74bc7890584ef3",
+                "row_count": 10087
+              },
+              "link_conta_transacao": {
+                "fingerprint": "sha256:3008e1728c290589de30baaa13e76875c42d12eaf4f3b0eae2ade30c94ea8ceb",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_satellites": {
+            "fingerprint": "sha256:9d68ca28ef1749485254cd3279d7926f76e694a5cea6f04984960b1f8043df3f",
+            "tables": {
+              "sat_agencia_detalhes": {
+                "fingerprint": "sha256:3c57f8f0660f4fda4351e89604d0be3eeb3bb7ae6385a2fc3ac19645087074e1",
+                "row_count": 100
+              },
+              "sat_cartao_detalhes": {
+                "fingerprint": "sha256:80f46971e11150b1b83d227d20583bf2b47e54344a31be1fcaacb4d57b763cc7",
+                "row_count": 10044
+              },
+              "sat_cliente_dados_cadastrais": {
+                "fingerprint": "sha256:daf6a7b3c8be5ba4a67d7b57e61b24c71e8b00f22a23afca044785d01ebcbc57",
+                "row_count": 5000
+              },
+              "sat_cliente_documentos": {
+                "fingerprint": "sha256:af8118086328802644e0555c4378e5811c3bcb8b1eec222ce9bf5be28652b18e",
+                "row_count": 5000
+              },
+              "sat_conta_detalhes": {
+                "fingerprint": "sha256:b6a17b31818b35380ae4d369f7b51b612e9481f1a13a168ef46031103526ee8a",
+                "row_count": 10087
+              },
+              "sat_evento_digital_detalhes": {
+                "fingerprint": "sha256:4a5fdca8fb67a7bca6a02ddc865c55533a32adb7f9a9378e5577bad7ce995ae2",
+                "row_count": 200000
+              },
+              "sat_produto_detalhes": {
+                "fingerprint": "sha256:a05d1d76355c97ef6c9d20afeb74ea2254408207ded15e04721671e8a376355c",
+                "row_count": 50
+              },
+              "sat_transacao_detalhes": {
+                "fingerprint": "sha256:9636fa19576417339906fe554060566098c52394103f11f38ae7fa0c7fb85569",
+                "row_count": 100000
+              }
+            }
+          }
+        },
+        "git_sha": "ee198106abda668a833826ace0e16f4e56516025",
+        "image_digest": "sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac",
+        "input_rows": 325281,
+        "layer_counts": {
+          "bronze": 325281,
+          "gold": 95484,
+          "raw_vault_hubs": 125286,
+          "raw_vault_links": 195294,
+          "raw_vault_satellites": 330281
+        },
+        "lineage": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "lineage": "PASS"
+          },
+          "status": "PASS"
+        },
+        "masking": {
+          "failure_categories": {
+            "client_check_failures": 0,
+            "forbidden_columns": 0,
+            "protected_check_failures": 0,
+            "raw_pattern_hits": 0,
+            "risk_check_failures": 0,
+            "sample_failures": 0
+          },
+          "failure_count": 0,
+          "status": "PASS",
+          "tables_checked": 7
+        },
+        "measurement_kind": "measurement",
+        "monitoring": {
+          "event_count": 5,
+          "status": "PASS"
+        },
+        "output_fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+        "pipeline_contract_version": "data-master-pipeline-v1",
+        "profile_id": "minikube-horizontal-3",
+        "quality": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "gold_path_separation": "PASS",
+            "gold_storage": "PASS",
+            "hubs": "PASS",
+            "lgpd_reference": "PASS",
+            "lineage": "PASS",
+            "links": "PASS",
+            "satellites": "PASS"
+          },
+          "failed_checks": [],
+          "status": "PASS"
+        },
+        "repetition": 2,
+        "run_id": "measure-2-e3",
+        "schema_version": 1,
+        "secret_findings": 0,
+        "shared_storage": {
+          "pod_count": 1,
+          "restart_count": 0,
+          "status": "PASS"
+        },
+        "source_counts": {
+          "agencias": 100,
+          "cartoes": 10044,
+          "clientes": 5000,
+          "contas": 10087,
+          "eventos_digitais": 200000,
+          "produtos": 50,
+          "transacoes": 100000
+        },
+        "spark": {
+          "dynamic_allocation": false,
+          "executor_instances": 3,
+          "executor_memory": "1g",
+          "master": "k8s://https://kubernetes.default.svc",
+          "shuffle_partitions": 24
+        },
+        "stage_durations": [
+          {
+            "duration_seconds": 237.182,
+            "name": "bronze",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 156.772,
+            "name": "hubs",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 154.117,
+            "name": "links",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 143.622,
+            "name": "satellites",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 182.903,
+            "name": "gold",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 270.615,
+            "name": "data-vault-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 44.62,
+            "name": "masking-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 27.721,
+            "name": "metrics",
+            "status": "PASS"
+          }
+        ],
+        "status": "PASS",
+        "throughput_records_per_second": 253.491,
+        "topology": "single-node-application-scale-out",
+        "validation_failures": []
+      },
+      {
+        "batch_id": "batch-3-e3",
+        "benchmark_id": "hscale-20260728094640",
+        "benchmark_kind": "static-horizontal-spark-scale-out",
+        "change_id": "DM-RUN-004",
+        "dataset_fingerprint": "sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e",
+        "dataset_seed": 42,
+        "dataset_volume": "controlled-horizontal-v1",
+        "driver_pods_observed": 1,
+        "duration_seconds": 1336.855,
+        "executor_evidence": {
+          "executors": [
+            {
+              "executor_id": "1",
+              "failed_tasks": 0,
+              "host": "10.244.0.24",
+              "input_bytes": 235255814,
+              "input_records": 2291056,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 523053,
+              "output_records": 28427,
+              "pod": "banking-data-vault-pipeline-79656a9fa8c440e3-exec-1",
+              "pod_status": "Succeeded",
+              "runtime_ms": 691847,
+              "shuffle_read_bytes": 101173946,
+              "shuffle_write_bytes": 105517572,
+              "status": "ACTIVE",
+              "tasks": 6566
+            },
+            {
+              "executor_id": "2",
+              "failed_tasks": 0,
+              "host": "10.244.0.25",
+              "input_bytes": 453376284,
+              "input_records": 1985002,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 515821,
+              "output_records": 28429,
+              "pod": "banking-data-vault-pipeline-79656a9fa8c440e3-exec-2",
+              "pod_status": "Succeeded",
+              "runtime_ms": 697539,
+              "shuffle_read_bytes": 111922079,
+              "shuffle_write_bytes": 111229208,
+              "status": "ACTIVE",
+              "tasks": 6870
+            },
+            {
+              "executor_id": "3",
+              "failed_tasks": 0,
+              "host": "10.244.0.26",
+              "input_bytes": 243158985,
+              "input_records": 1991527,
+              "node": "data-master-horizontal-20260728064640",
+              "output_bytes": 522810,
+              "output_records": 28409,
+              "pod": "banking-data-vault-pipeline-79656a9fa8c440e3-exec-3",
+              "pod_status": "Succeeded",
+              "runtime_ms": 647937,
+              "shuffle_read_bytes": 93614493,
+              "shuffle_write_bytes": 89964658,
+              "status": "ACTIVE",
+              "tasks": 6444
+            }
+          ],
+          "executors_observed": 3,
+          "executors_requested": 3,
+          "nodes_observed": [
+            "data-master-horizontal-20260728064640"
+          ],
+          "tasks_distributed": true
+        },
+        "executors_requested": 3,
+        "functional_fingerprints": {
+          "bronze": {
+            "fingerprint": "sha256:e9c0dcb1ce5af1d7175d1b6ce85331b4686559a78a1703848576a686160868c5",
+            "tables": {
+              "agencias": {
+                "fingerprint": "sha256:01263c352c86e1e413a7327492f9b13abc8e9ee5b936cbe061e3fca13797808f",
+                "row_count": 100
+              },
+              "cartoes": {
+                "fingerprint": "sha256:1bded16d01b53c471ad84c6a07bdf4eb252525a798a6d34faceceb5c1a629d89",
+                "row_count": 10044
+              },
+              "clientes": {
+                "fingerprint": "sha256:7b9304e6a26ab591052135fce7b96b9a94e5639d4b18f1d531a73b6618b5d157",
+                "row_count": 5000
+              },
+              "contas": {
+                "fingerprint": "sha256:37a1510d70d34f8d7cdab788d57dd4a0f67f6aac0abc83df03da94ea674d8257",
+                "row_count": 10087
+              },
+              "eventos_digitais": {
+                "fingerprint": "sha256:2eb4596ed5baa3880731f81b75453318a05079913ecd2dbdf1427016ec38772a",
+                "row_count": 200000
+              },
+              "produtos": {
+                "fingerprint": "sha256:58fed5912a1ee09849a80bef3044275d853ff1a28ce6d3db0724ba365d12d73c",
+                "row_count": 50
+              },
+              "transacoes": {
+                "fingerprint": "sha256:a21f420145bb026bae53693a0e8996a3066484f515af5e6e2634673d03efce0e",
+                "row_count": 100000
+              }
+            }
+          },
+          "gold": {
+            "fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+            "tables": {
+              "gold_clientes_protegidos": {
+                "fingerprint": "sha256:dfa91153f15c6c14afb1aa28675e0c8c3cd6d32985fff9b7b4cc74726cf81819",
+                "row_count": 5000
+              },
+              "gold_contas_por_agencia": {
+                "fingerprint": "sha256:028073c802aaf040179380e9fc93a970e0820ef3d03fbae771558db197383abe",
+                "row_count": 100
+              },
+              "gold_eventos_digitais_por_canal": {
+                "fingerprint": "sha256:472c40c40b8dfe24992152e005fb1cdbf1d51d9bf5fd68d39dcd2c77ede20506",
+                "row_count": 90
+              },
+              "gold_risco_transacional_simplificado": {
+                "fingerprint": "sha256:7893ce28ec5fe073b6a150d49544d16d5ba9e77f8f137a0cca4248c0d30a37f5",
+                "row_count": 85164
+              },
+              "gold_transacoes_por_cliente": {
+                "fingerprint": "sha256:f2550628bd42b831095cb6b41e78899d04e1a37e68b1ba3c9984e5d4a21ecc8a",
+                "row_count": 5000
+              },
+              "gold_transacoes_por_dia": {
+                "fingerprint": "sha256:2e99d2b17c26ba9855e86c0d505d7fffbbe259f605425e692312ff70c9628aac",
+                "row_count": 124
+              },
+              "gold_volume_por_produto": {
+                "fingerprint": "sha256:c7ff5cd02e69c6d4c81f9ef8475eb73553e987cc9be482147f6d557b0ced68b7",
+                "row_count": 6
+              }
+            }
+          },
+          "raw_vault_hubs": {
+            "fingerprint": "sha256:2696c93974127faff8b96c9629390738ace61974561d01ac08147090190c80e8",
+            "tables": {
+              "hub_agencia": {
+                "fingerprint": "sha256:3e247e8098fdc4ba721c8ade51b027d9ffc157cc1620919bb049c03c36f026ca",
+                "row_count": 100
+              },
+              "hub_canal_digital": {
+                "fingerprint": "sha256:cda981c2216ab9fd0961380a7a4fe4ff1b67116c52b7c62c162a7e6edb540e46",
+                "row_count": 5
+              },
+              "hub_cartao": {
+                "fingerprint": "sha256:9d51d5c508e2c681a7135cb0039cd355052e2dbfb1a2241fa6c554ffbfa2cbb6",
+                "row_count": 10044
+              },
+              "hub_cliente": {
+                "fingerprint": "sha256:635f1188ce4e67da668968fd1de7e767c53723ad540bc33713d5434d34a0be3b",
+                "row_count": 5000
+              },
+              "hub_conta": {
+                "fingerprint": "sha256:af85812d6fd517b765736460ec8f9b4077d2dddd2b33d37fdd80acdf905968d6",
+                "row_count": 10087
+              },
+              "hub_produto": {
+                "fingerprint": "sha256:bad5c1752ff2dc3557c1701f82e29b42797e36e89d468e600285619ff9ec9fc6",
+                "row_count": 50
+              },
+              "hub_transacao": {
+                "fingerprint": "sha256:47e8f2f8debfc9a86dd70affe335fe5778ffc9fad5ccfb586b32f80b3adf1920",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_links": {
+            "fingerprint": "sha256:8c60cd9adc21abcfd69dc7d49f32c396c121c90b391f0340e4b3a876d23048c5",
+            "tables": {
+              "link_cartao_transacao": {
+                "fingerprint": "sha256:cf67b6ab8f7ece978dee56829da33886136aa78dc54bc0d6f214ec74280463c7",
+                "row_count": 29998
+              },
+              "link_cliente_cartao": {
+                "fingerprint": "sha256:f8fc74c2f13caeeb4056bf0d8ca0db45dddabed6dde291d4dee883e81a245338",
+                "row_count": 10044
+              },
+              "link_cliente_conta": {
+                "fingerprint": "sha256:afbf90c8536a7b75350ca365c2a7a77b6fb6a8d71dcc89f35be8648162bdc180",
+                "row_count": 10087
+              },
+              "link_cliente_evento_digital": {
+                "fingerprint": "sha256:7c33072f77f52e31a589cdcbe5fe02680df170ea9c20263763e95b4bf161cb3a",
+                "row_count": 24991
+              },
+              "link_conta_agencia": {
+                "fingerprint": "sha256:378b0e6f47f0bb47cf74f011032f064cc79b3808b2b7ba46134c1dd3dbcd9b26",
+                "row_count": 10087
+              },
+              "link_conta_produto": {
+                "fingerprint": "sha256:8ec65322ac48b4f13fcb730cb5e88fc58782a58620eb39b4aa74bc7890584ef3",
+                "row_count": 10087
+              },
+              "link_conta_transacao": {
+                "fingerprint": "sha256:3008e1728c290589de30baaa13e76875c42d12eaf4f3b0eae2ade30c94ea8ceb",
+                "row_count": 100000
+              }
+            }
+          },
+          "raw_vault_satellites": {
+            "fingerprint": "sha256:9d68ca28ef1749485254cd3279d7926f76e694a5cea6f04984960b1f8043df3f",
+            "tables": {
+              "sat_agencia_detalhes": {
+                "fingerprint": "sha256:3c57f8f0660f4fda4351e89604d0be3eeb3bb7ae6385a2fc3ac19645087074e1",
+                "row_count": 100
+              },
+              "sat_cartao_detalhes": {
+                "fingerprint": "sha256:80f46971e11150b1b83d227d20583bf2b47e54344a31be1fcaacb4d57b763cc7",
+                "row_count": 10044
+              },
+              "sat_cliente_dados_cadastrais": {
+                "fingerprint": "sha256:daf6a7b3c8be5ba4a67d7b57e61b24c71e8b00f22a23afca044785d01ebcbc57",
+                "row_count": 5000
+              },
+              "sat_cliente_documentos": {
+                "fingerprint": "sha256:af8118086328802644e0555c4378e5811c3bcb8b1eec222ce9bf5be28652b18e",
+                "row_count": 5000
+              },
+              "sat_conta_detalhes": {
+                "fingerprint": "sha256:b6a17b31818b35380ae4d369f7b51b612e9481f1a13a168ef46031103526ee8a",
+                "row_count": 10087
+              },
+              "sat_evento_digital_detalhes": {
+                "fingerprint": "sha256:4a5fdca8fb67a7bca6a02ddc865c55533a32adb7f9a9378e5577bad7ce995ae2",
+                "row_count": 200000
+              },
+              "sat_produto_detalhes": {
+                "fingerprint": "sha256:a05d1d76355c97ef6c9d20afeb74ea2254408207ded15e04721671e8a376355c",
+                "row_count": 50
+              },
+              "sat_transacao_detalhes": {
+                "fingerprint": "sha256:9636fa19576417339906fe554060566098c52394103f11f38ae7fa0c7fb85569",
+                "row_count": 100000
+              }
+            }
+          }
+        },
+        "git_sha": "ee198106abda668a833826ace0e16f4e56516025",
+        "image_digest": "sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac",
+        "input_rows": 325281,
+        "layer_counts": {
+          "bronze": 325281,
+          "gold": 95484,
+          "raw_vault_hubs": 125286,
+          "raw_vault_links": 195294,
+          "raw_vault_satellites": 330281
+        },
+        "lineage": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "lineage": "PASS"
+          },
+          "status": "PASS"
+        },
+        "masking": {
+          "failure_categories": {
+            "client_check_failures": 0,
+            "forbidden_columns": 0,
+            "protected_check_failures": 0,
+            "raw_pattern_hits": 0,
+            "risk_check_failures": 0,
+            "sample_failures": 0
+          },
+          "failure_count": 0,
+          "status": "PASS",
+          "tables_checked": 7
+        },
+        "measurement_kind": "measurement",
+        "monitoring": {
+          "event_count": 5,
+          "status": "PASS"
+        },
+        "output_fingerprint": "sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b",
+        "pipeline_contract_version": "data-master-pipeline-v1",
+        "profile_id": "minikube-horizontal-3",
+        "quality": {
+          "checks": {
+            "gold_lineage": "PASS",
+            "gold_path_separation": "PASS",
+            "gold_storage": "PASS",
+            "hubs": "PASS",
+            "lgpd_reference": "PASS",
+            "lineage": "PASS",
+            "links": "PASS",
+            "satellites": "PASS"
+          },
+          "failed_checks": [],
+          "status": "PASS"
+        },
+        "repetition": 3,
+        "run_id": "measure-3-e3",
+        "schema_version": 1,
+        "secret_findings": 0,
+        "shared_storage": {
+          "pod_count": 1,
+          "restart_count": 0,
+          "status": "PASS"
+        },
+        "source_counts": {
+          "agencias": 100,
+          "cartoes": 10044,
+          "clientes": 5000,
+          "contas": 10087,
+          "eventos_digitais": 200000,
+          "produtos": 50,
+          "transacoes": 100000
+        },
+        "spark": {
+          "dynamic_allocation": false,
+          "executor_instances": 3,
+          "executor_memory": "1g",
+          "master": "k8s://https://kubernetes.default.svc",
+          "shuffle_partitions": 24
+        },
+        "stage_durations": [
+          {
+            "duration_seconds": 252.684,
+            "name": "bronze",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 168.507,
+            "name": "hubs",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 164.343,
+            "name": "links",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 134.551,
+            "name": "satellites",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 195.314,
+            "name": "gold",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 275.536,
+            "name": "data-vault-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 45.175,
+            "name": "masking-gate",
+            "status": "PASS"
+          },
+          {
+            "duration_seconds": 33.875,
+            "name": "metrics",
+            "status": "PASS"
+          }
+        ],
+        "status": "PASS",
+        "throughput_records_per_second": 243.318,
+        "topology": "single-node-application-scale-out",
+        "validation_failures": []
+      }
+    ]
+  },
+  "schema_version": 1,
+  "speedup": 1.43,
+  "topology": "single-node-application-scale-out",
+  "warmup": {
+    "discarded": true,
+    "profile_id": "minikube-horizontal-1",
+    "status": "PASS"
+  }
+}

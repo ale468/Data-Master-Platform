@@ -24,7 +24,12 @@ Os critérios técnicos centrais são:
 - rastrear cada estágio por status, duração, contagens e lote;
 - interromper a validação quando dados, lineage, masking ou contratos divergem;
 - medir dois volumes locais sem confundir a medição com escala produtiva;
-- manter código, configuração, testes e automação publicamente verificáveis.
+- manter código, configuração, testes e automação verificáveis e dentro da
+  fronteira de conteúdo publication-safe.
+
+O repositório permanece privado por decisão do proprietário.
+`Publication-safe` descreve o conteúdo que pode ser compartilhado, não a
+visibilidade configurada no GitHub.
 
 O baseline aprovado é local. Kubernetes, Spark Operator, Airflow e Argo CD
 formam também um caminho local avançado, executado manualmente. `cloud-ready`
@@ -83,6 +88,7 @@ flowchart LR
 |---|---|---|
 | `local-small` | Spark local em contêiner; caminho Bronze → Raw Vault → Gold e gates | Prova funcional local, não escala distribuída |
 | `local-medium` | Mesmo contrato com volume e recursos locais ampliados | Uma observação controlada, não benchmark estatístico |
+| `minikube-horizontal-1` / `minikube-horizontal-3` | Spark Operator em cluster mode, com um ou três executor pods fixos | Scale-out estático local; single-node não prova distribuição física |
 | Airflow | DAG importável com oito tasks e imagem construída na CI | Não prova scheduler produtivo, HA ou multi-tenancy |
 | Minikube/GitOps | Automação local avançada com Helm, Argo CD e Spark Operator | Execução manual; requer recursos e revisão publicada |
 | `cloud-ready` | Configuração de referência com submission `reference-only` | Não é executada por este case |
@@ -180,6 +186,24 @@ Exit `2` representa erro do harness, regra incorreta, ausência de detecção ou
 um stage operacional indevidamente bem-sucedido. Portanto, a falha proposital
 não é convertida em sucesso.
 
+#### Matriz operacional de sinais e resposta
+
+| Sinal | Origem | Threshold ou contrato | Resposta fail-closed | Evidência ou teste |
+|---|---|---|---|---|
+| Schema inválido | Inspeção da fonte antes da Bronze | Colunas obrigatórias presentes | `bronze=FAILURE`; smoke termina com exit `1` | [`test_observability_detection.py`](tests/runtime/test_observability_detection.py) |
+| Fonte ausente | Inspeção do arquivo de entrada | Fonte obrigatória deve existir | `bronze=FAILURE`; smoke termina com exit `1` | [`run_observability_failure_smoke.py`](jobs/observability/run_observability_failure_smoke.py) |
+| Volume zero | Contagem da fonte e da camada | Mínimo `1` registro | Gate bloqueia a Bronze; smoke termina com exit `1` | [`thresholds.yml`](config/observability/thresholds.yml) |
+| Executor solicitado, mas não observado | Pods e Spark status API | Observados = solicitados (`1` ou `3`) | Medição e resultado agregado tornam-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Tasks não distribuídas | Métricas por executor | `tasks_distributed=true`; cada executor executa tasks | Medição torna-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Input ou output ausente por executor | Spark status API | Input e output positivos em cada executor | Workload torna-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Divergência de fingerprint | Comparação das seis medições | Dataset, camadas e output devem ser iguais | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+| Reinício do MinIO | Observação do shared storage | Status `PASS` e `restart_count=0` | Medição torna-se `FAIL` | [artifact horizontal](tests/evidence/horizontal-scaling/hscale-20260728064640.json) |
+| Falha de masking | Gate de privacidade | Máximo `0` falhas | Medição e resultado agregado tornam-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+| Secret finding | Scanner do repositório | Exatamente `0` findings | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+
+Esses sinais são contratos executáveis e evidências locais; não representam
+dashboard, paging, SLO, alerta operacional ou processo on-call.
+
 ### Benchmark de escalabilidade local controlada
 
 O
@@ -201,13 +225,154 @@ menor. O resultado não exige melhora linear.
 Startup, cache local, commits Delta e releituras dos gates influenciam a
 medição; os números não são SLA, sizing produtivo ou previsão de cloud.
 
+### Scale-out horizontal Spark estático
+
+Escala vertical aumenta recursos de uma unidade de processamento. Escala
+horizontal aumenta a quantidade de unidades. O experimento abaixo manteve um
+core e 1 GiB de heap por executor e alterou somente o identificador do profile
+e `spark.executor_instances`, de `1` para `3`. Dynamic allocation permaneceu
+desabilitada.
+
+```mermaid
+flowchart TB
+    Benchmark["Benchmark horizontal<br/>warm-up + 3 medições por cenário"]
+    Operator["Spark Operator<br/>cluster mode"]
+    Driver1["driver pod<br/>baseline"]
+    Executor1["executor pod 1"]
+    Driver3["driver pod<br/>scale-out"]
+    Executor31["executor pod 1"]
+    Executor32["executor pod 2"]
+    Executor33["executor pod 3"]
+    Storage["MinIO/S3A compartilhado<br/>prefixo isolado por run"]
+
+    Benchmark --> Operator
+    Operator --> Driver1
+    Driver1 --> Executor1
+    Operator --> Driver3
+    Driver3 --> Executor31
+    Driver3 --> Executor32
+    Driver3 --> Executor33
+    Executor1 --> Storage
+    Executor31 --> Storage
+    Executor32 --> Storage
+    Executor33 --> Storage
+```
+
+Execução observada em 28 de julho de 2026:
+
+| Contrato controlado | Baseline | Scale-out |
+|---|---:|---:|
+| Profile | `minikube-horizontal-1` | `minikube-horizontal-3` |
+| Executor instances | 1 | 3 |
+| Cores por executor | 1 | 1 |
+| Heap por executor | 1 GiB | 1 GiB |
+| Shuffle partitions | 24 | 24 |
+| Dataset / seed | `controlled-horizontal-v1` / `42` | `controlled-horizontal-v1` / `42` |
+| Medições válidas | 3 | 3 |
+| Durações | 1794,212 s; 1839,091 s; 1840,697 s | 1286,373 s; 1283,205 s; 1336,855 s |
+| Throughputs | 181,295; 176,871; 176,716 reg/s | 252,867; 253,491; 243,318 reg/s |
+| Mediana de duração | 1839,091 s | 1286,373 s |
+| Mediana de throughput | 176,871 reg/s | 252,867 reg/s |
+| Executores solicitados / observados | 1 / 1 em todas as medições | 3 / 3 em todas as medições |
+| Nós observados | 1 | 1 |
+
+O warm-up de `1750,564 s` foi descartado. Com as medianas, o speedup foi
+`1,430` e a eficiência paralela foi `0,477` (`47,7%`). Os três executores do
+scale-out executaram tasks e registraram input, output, runtime e shuffle; não
+foi inferido paralelismo apenas pela configuração.
+
+O experimento processou `325.281` registros de entrada em cada run. Todas as
+seis medições produziram o mesmo dataset fingerprint
+`sha256:1bf3ccfb1ab954fd8d33903da922fa3d720b5daa408397568fb7b6b372ee946e`
+e o mesmo output fingerprint
+`sha256:c8f68e9b86d79e936b0fb4e77e2df8f5604027028eb1ce036f57e1bcabd3762b`.
+As contagens equivalentes foram:
+
+- Bronze: `325.281`;
+- Raw Vault Hubs: `125.286`;
+- Raw Vault Links: `195.294`;
+- Raw Vault Satellites: `330.281`;
+- Gold: `95.484`.
+
+Data Vault, lineage, masking, monitoring e qualidade retornaram `PASS`; o scan
+encontrou zero secrets e a Gold não expôs dados brutos. O resultado agregado
+foi `PASS`, vinculado ao commit
+`ee198106abda668a833826ace0e16f4e56516025` e à imagem
+`sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac`.
+A evidência sanitizada está em
+[`hscale-20260728064640.json`](tests/evidence/horizontal-scaling/hscale-20260728064640.json).
+
+#### Reproduzir o benchmark horizontal
+
+Esta é uma execução manual longa e exclusiva para Windows. Antes de iniciar,
+confirme:
+
+- Git, Windows PowerShell 5.1 ou PowerShell 7+, Docker com engine Linux,
+  Minikube, Helm e `kubectl`;
+- ao menos 4 CPUs lógicas, 16 GiB de memória no host, 11 GiB disponíveis para
+  o Docker e 45 GiB livres na unidade `C:`;
+- Docker em execução, acesso à internet, porta local `5000` livre e worktree
+  Git limpo;
+- ausência do profile alvo: por padrão o script cria
+  `data-master-horizontal-<timestamp UTC>` e bloqueia, sem alterá-lo, se esse
+  profile já existir.
+
+Em um clone limpo, na raiz do repositório:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\minikube\Invoke-HorizontalScalingBenchmark.ps1
+```
+
+O plano controlado cria um Minikube isolado com 4 CPUs, `11264 MiB` e disco
+`40g`. Ele descarta um warm-up com um executor e registra três medições com um
+executor e três com três executores. Na execução versionada, os sete workloads
+consumiram aproximadamente `3 h 05 min`; reserve cerca de quatro horas para
+incluir build, provisionamento e limpeza.
+
+O resultado padrão é gravado em
+`tests/evidence/horizontal-scaling/hscale-<timestamp UTC>.json`. Ao terminar,
+o script remove o profile criado, o registry efêmero e os arquivos
+temporários. `-KeepRunResources` preserva somente o profile Minikube e os
+serviços que ainda estiverem nele para inspeção; o registry e os temporários
+continuam sendo removidos, e cada `SparkApplication` já é apagada após sua
+medição.
+
+| Exit | Resultado | Interpretação |
+|---:|---|---|
+| `0` | `PASS` | Gates e equivalência passaram, executores foram observados e houve benefício mensurável pela mediana |
+| `2` | `INCONCLUSIVE` | Execução funcional, mas sem benefício mensurável |
+| `3` | `FAIL` | Medição, gate, observação ou equivalência falhou |
+| `4` | `HARNESS_ERROR` | O orquestrador ou agregador não conseguiu produzir uma conclusão válida |
+| `5` | `BLOCKED` | Preflight de ambiente ou segurança impediu o início controlado |
+
+Para conferir somente o artifact versionado em segundos, sem Docker, Minikube
+ou rede:
+
+```powershell
+python -m unittest discover `
+  -s tests/runtime `
+  -p "test_committed_horizontal_evidence.py" `
+  -v
+```
+
+O quickstart demonstra application scale-out estático no mesmo nó. Ele não
+comprova multi-node, autoscaling, HPA, dynamic allocation, cloud, SLA, custo
+ou sizing produtivo.
+
+O resultado prova scale-out estático do processamento Spark no Minikube. Como
+todos os executores foram observados no mesmo nó, ele não prova distribuição
+física multi-node. Também não prova produção, SLA, estabilidade prolongada,
+cloud, custo, sizing ou autoscaling; HPA e dynamic allocation não foram
+implementados.
+
 ### Matriz requisito → implementação → evidência
 
 | Requisito | Implementação pública | Evidência verificável |
 |---|---|---|
 | Reprodutibilidade | [`Invoke-PublicCaseValidation.ps1`](scripts/Invoke-PublicCaseValidation.ps1) | JSON ignorado localmente e artifact do [workflow](https://github.com/ale468/Data-Master-Platform/actions/workflows/case-validation.yml) |
 | Observabilidade | [`monitoring.py`](jobs/common/monitoring.py), thresholds e failure smoke | Cinco eventos no end-to-end; três falhas negativas; testes em [`test_observability_detection.py`](tests/runtime/test_observability_detection.py) |
-| Escalabilidade | Runtime profiles e benchmark isolado | JSON comparativo e contratos em [`test_scalability_profiles.py`](tests/runtime/test_scalability_profiles.py) |
+| Escalabilidade | Profiles locais e horizontais, adapter único e benchmarks isolados | Artifact horizontal sanitizado, executor/task metrics e contratos em [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
 | Data Vault e lineage | Hubs, Links, Satellites e quality gate executável | Suíte [`tests/data_vault`](tests/data_vault) e job Spark da CI |
 | Gold e privacidade | Marts Raw-derived, pseudonimização, masking e scan | [`run_gold_masking_smoke.py`](jobs/business_vault/run_gold_masking_smoke.py) e gate Spark |
 | Streaming e CDC | Structured Streaming com file source e semântica CDC local | Smokes versionados e executados na CI; sem claim de broker ou log capture |
@@ -244,7 +409,7 @@ mesmo SHA.
 | Tema | O que foi demonstrado | O que não deve ser afirmado |
 |---|---|---|
 | Cloud | Arquitetura e profile de referência | Deploy cloud validado, operação ou custo |
-| Escala | Dois volumes locais, memória/partições e gargalo por wall-clock | Autoscaling, escala horizontal ou speedup linear |
+| Escala | Dois volumes locais e scale-out Spark estático de 1 para 3 executores no mesmo nó | Autoscaling, multi-node, speedup linear, escala produtiva ou de todos os componentes |
 | Streaming | Microbatch local com file source e checkpoint | Kafka, Kinesis, Event Hubs ou SLA produtivo |
 | CDC/conectores | Semântica CDC e contrato de adapter local | Debezium, Airbyte, Kafka Connect ou log capture real |
 | LGPD | Classificação, pseudonimização, masking e scan técnico | Certificação, parecer jurídico ou compliance formal |

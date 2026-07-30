@@ -11,6 +11,132 @@ from typing import Any, Dict, List, Mapping, Optional
 
 DEFAULT_RUNTIME_PROFILE = "presentation-demo"
 
+HORIZONTAL_DATASET_SEED = 42
+HORIZONTAL_DATASET_REFERENCE_TIME = "2026-01-01T00:00:00+00:00"
+HORIZONTAL_DATASET_VOLUME = "controlled-horizontal-v1"
+HORIZONTAL_PIPELINE_CONTRACT_VERSION = "data-master-pipeline-v1"
+HORIZONTAL_SHUFFLE_PARTITIONS = 24
+
+
+def build_horizontal_profile(executor_instances: int) -> Dict[str, Any]:
+    """Build one static horizontal profile from the shared experiment contract."""
+    if executor_instances not in (1, 3):
+        raise ValueError("Horizontal executor instances must be exactly 1 or 3.")
+
+    profile_id = f"minikube-horizontal-{executor_instances}"
+    return {
+        "id": profile_id,
+        "label": "Minikube static horizontal benchmark",
+        "description": (
+            "Controlled Spark Operator cluster-mode profile for static scale-out."
+        ),
+        "execution": {
+            "mode": "kubernetes",
+            "orchestrator": "direct",
+            "processing": "spark-operator",
+            "max_runtime_minutes": 45,
+            "expectation": "controlled static horizontal Spark scale-out evidence",
+        },
+        "submission": {
+            "mode": "spark-operator-direct",
+        },
+        "dataset": {
+            "seed": HORIZONTAL_DATASET_SEED,
+            "reference_time": HORIZONTAL_DATASET_REFERENCE_TIME,
+            "volume": HORIZONTAL_DATASET_VOLUME,
+            "pipeline_contract_version": HORIZONTAL_PIPELINE_CONTRACT_VERSION,
+        },
+        "batch": {
+            "clientes": 5000,
+            "agencias": 100,
+            "produtos": 50,
+            "accounts_per_client": 3,
+            "cards_per_account": 2,
+            "transacoes": 100000,
+            "eventos_digitais_file": 200000,
+        },
+        "streaming": {
+            "enabled": False,
+            "status": "outside-this-profile",
+            "expected_events_per_second": 0,
+            "checkpoint_required": True,
+            "demo_event_count": 0,
+            "demo_file_count": 0,
+            "trigger": "external",
+        },
+        "cdc": {
+            "enabled": False,
+            "status": "outside-this-profile",
+            "snapshot_required": False,
+            "operations": ["snapshot", "insert", "update", "delete"],
+            "demo_event_count": 0,
+            "demo_source_table": "core_clientes",
+        },
+        "spark": {
+            "master": "k8s://https://kubernetes.default.svc",
+            "driver_memory": "1g",
+            "driver_memory_overhead": "1024m",
+            "executor_memory": "1g",
+            "executor_memory_overhead": "768m",
+            "executor_instances": executor_instances,
+            "shuffle_partitions": HORIZONTAL_SHUFFLE_PARTITIONS,
+            "adaptive_enabled": False,
+            "dynamic_allocation": False,
+        },
+        "kubernetes": {
+            "namespace": "data-platform",
+            "service_account": "spark",
+            "image": "${DATA_MASTER_SPARK_IMAGE_DIGEST}",
+            "image_pull_policy": "IfNotPresent",
+            "driver_cores": 1,
+            "driver_core_request": "250m",
+            "driver_core_limit": "1000m",
+            "executor_cores": 1,
+            "executor_core_request": "750m",
+            "executor_core_limit": "1000m",
+            "minikube": {
+                "cpus": 4,
+                "memory_mib": 11264,
+                "disk_size": "40g",
+            },
+            "minio": {
+                "persistence_size": "20Gi",
+                "go_memory_limit": "2GiB",
+                "resources": {
+                    "requests": {
+                        "cpu": "200m",
+                        "memory": "512Mi",
+                    },
+                    "limits": {
+                        "cpu": "1000m",
+                        "memory": "2560Mi",
+                    },
+                },
+            },
+            "minio_endpoint": (
+                "http://minio.data-platform.svc.cluster.local:9000"
+            ),
+            "credentials_secret": "data-master-minio-secret",
+            "storage_root": "s3a://lakehouse/horizontal",
+            "bronze_path": "s3a://lakehouse/horizontal",
+            "raw_vault_path": "s3a://lakehouse/horizontal",
+            "gold_path": "s3a://lakehouse/horizontal",
+        },
+        "quality": {
+            "data_vault_gate": True,
+            "lineage_gate": True,
+            "masking_gate": True,
+            "secret_scan": True,
+        },
+        "observability": {
+            "enabled": True,
+            "write_metrics_to_delta": True,
+            "event_log_enabled": False,
+            "spark_status_api_enabled": True,
+            "log_level": "INFO",
+        },
+    }
+
 
 RUNTIME_PROFILES: Dict[str, Dict[str, Any]] = {
     "local-small": {
@@ -134,6 +260,8 @@ RUNTIME_PROFILES: Dict[str, Dict[str, Any]] = {
             "log_level": "INFO",
         },
     },
+    "minikube-horizontal-1": build_horizontal_profile(1),
+    "minikube-horizontal-3": build_horizontal_profile(3),
     "presentation-demo": {
         "id": "presentation-demo",
         "label": "Presentation demo",
@@ -427,6 +555,36 @@ def validate_runtime_profile(profile: Mapping[str, Any]) -> None:
             raise ValueError(
                 f"Runtime profile '{profile_id}' is missing spark field '{field}'."
             )
+
+    if str(profile_id).startswith("minikube-horizontal-"):
+        if spark["master"].startswith("local"):
+            raise ValueError(
+                f"Runtime profile '{profile_id}' cannot use a local Spark master."
+            )
+        if spark.get("dynamic_allocation") is not False:
+            raise ValueError(
+                f"Runtime profile '{profile_id}' must disable dynamic allocation."
+            )
+        if spark["executor_instances"] not in (1, 3):
+            raise ValueError(
+                f"Runtime profile '{profile_id}' must request 1 or 3 executors."
+            )
+        dataset = profile.get("dataset")
+        if not isinstance(dataset, Mapping):
+            raise ValueError(
+                f"Runtime profile '{profile_id}' requires a dataset section."
+            )
+        for field in (
+            "seed",
+            "reference_time",
+            "volume",
+            "pipeline_contract_version",
+        ):
+            if dataset.get(field) in (None, ""):
+                raise ValueError(
+                    f"Runtime profile '{profile_id}' is missing dataset field "
+                    f"'{field}'."
+                )
 
     execution = profile["execution"]
     for field in ("mode", "orchestrator", "processing"):

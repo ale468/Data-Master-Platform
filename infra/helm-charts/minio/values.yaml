@@ -36,6 +36,8 @@ resources:
     memory: 512Mi
     cpu: 200m
 
+extraEnv: []
+
 # Probes
 livenessProbe:
   httpGet:

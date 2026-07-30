@@ -15,6 +15,27 @@ sys.path.insert(0, str(REPO_ROOT / "jobs" / "common"))
 from raw_vault_views import latest_satellite_state, read_required_raw_table
 
 
+class GoldMonetaryDeterminismContractTests(unittest.TestCase):
+    def test_gold_monetary_aggregates_use_deterministic_decimals(self):
+        source = (
+            REPO_ROOT / "jobs" / "business_vault" / "load_gold.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn('.cast("double")', source)
+        self.assertEqual(
+            source.count('F.col("valor").cast(MONEY_DECIMAL_TYPE)'),
+            3,
+        )
+        self.assertEqual(
+            source.count('F.col("saldo").cast(MONEY_DECIMAL_TYPE)'),
+            2,
+        )
+        self.assertIn(
+            'F.col("limite").cast(MONEY_DECIMAL_TYPE)',
+            source,
+        )
+        self.assertIn(".cast(MONEY_TOTAL_DECIMAL_TYPE)", source)
+
+
 class BusinessVaultLatestTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

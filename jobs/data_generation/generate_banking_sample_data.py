@@ -7,7 +7,7 @@ import argparse
 import csv
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -28,8 +28,31 @@ random.seed(42)
 
 
 class BankingDataGenerator:
-    """Gerador de dados bancários sintéticos."""
-    
+    """Generate synthetic banking data under an optional deterministic clock."""
+
+    REFERENCE_TIME: Optional[datetime] = None
+
+    @classmethod
+    def configure_determinism(
+        cls,
+        seed: int = 42,
+        reference_time: Optional[str] = None,
+    ) -> None:
+        """Reset pseudo-random state and optionally freeze generated timestamps."""
+        random.seed(seed)
+        if reference_time is None:
+            cls.REFERENCE_TIME = None
+            return
+        normalized = reference_time.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        cls.REFERENCE_TIME = parsed
+
+    @classmethod
+    def now(cls) -> datetime:
+        return cls.REFERENCE_TIME or datetime.now(timezone.utc)
+
     # Domínios de dados
     PRIMEIRO_NOMES = [
         "João", "Maria", "Pedro", "Ana", "Carlos", "Fernanda", 
@@ -300,21 +323,23 @@ class BankingDataGenerator:
         else:
             days = random.randint(0, days_forward)
         
-        date = datetime.now() + timedelta(days=days)
+        date = BankingDataGenerator.now() + timedelta(days=days)
         return date.strftime("%Y-%m-%d")
     
     @staticmethod
     def generate_datetime(hours_back: int = 0) -> str:
         """Gera datetime simulado."""
         hours = -random.randint(0, hours_back)
-        dt = datetime.now() + timedelta(hours=hours)
+        dt = BankingDataGenerator.now() + timedelta(hours=hours)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     
     @staticmethod
     def generate_birth_date() -> str:
         """Gera data de nascimento simulada."""
         years_back = random.randint(18, 80)
-        date = datetime.now() - timedelta(days=random.randint(0, years_back * 365))
+        date = BankingDataGenerator.now() - timedelta(
+            days=random.randint(0, years_back * 365)
+        )
         return date.strftime("%Y-%m-%d")
 
 
@@ -357,6 +382,8 @@ class SampleDataWriter:
 def generate_all_sample_data(
     output_dir: str = "./data/sample",
     runtime_profile: Optional[str] = None,
+    seed: Optional[int] = None,
+    reference_time: Optional[str] = None,
 ) -> Dict[str, str]:
     """
     Gera todos os dados de amostra.
@@ -369,6 +396,19 @@ def generate_all_sample_data(
     """
     profile = get_runtime_profile(runtime_profile)
     batch_counts = profile["batch"]
+    dataset_contract = profile.get("dataset", {})
+    effective_seed = int(
+        seed if seed is not None else dataset_contract.get("seed", 42)
+    )
+    effective_reference_time = (
+        reference_time
+        if reference_time is not None
+        else dataset_contract.get("reference_time")
+    )
+    BankingDataGenerator.configure_determinism(
+        seed=effective_seed,
+        reference_time=effective_reference_time,
+    )
 
     logger.info("="*80)
     logger.info("INICIANDO GERAÇÃO DE DADOS SINTÉTICOS")
