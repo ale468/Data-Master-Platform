@@ -186,6 +186,24 @@ Exit `2` representa erro do harness, regra incorreta, ausência de detecção ou
 um stage operacional indevidamente bem-sucedido. Portanto, a falha proposital
 não é convertida em sucesso.
 
+#### Matriz operacional de sinais e resposta
+
+| Sinal | Origem | Threshold ou contrato | Resposta fail-closed | Evidência ou teste |
+|---|---|---|---|---|
+| Schema inválido | Inspeção da fonte antes da Bronze | Colunas obrigatórias presentes | `bronze=FAILURE`; smoke termina com exit `1` | [`test_observability_detection.py`](tests/runtime/test_observability_detection.py) |
+| Fonte ausente | Inspeção do arquivo de entrada | Fonte obrigatória deve existir | `bronze=FAILURE`; smoke termina com exit `1` | [`run_observability_failure_smoke.py`](jobs/observability/run_observability_failure_smoke.py) |
+| Volume zero | Contagem da fonte e da camada | Mínimo `1` registro | Gate bloqueia a Bronze; smoke termina com exit `1` | [`thresholds.yml`](config/observability/thresholds.yml) |
+| Executor solicitado, mas não observado | Pods e Spark status API | Observados = solicitados (`1` ou `3`) | Medição e resultado agregado tornam-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Tasks não distribuídas | Métricas por executor | `tasks_distributed=true`; cada executor executa tasks | Medição torna-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Input ou output ausente por executor | Spark status API | Input e output positivos em cada executor | Workload torna-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Divergência de fingerprint | Comparação das seis medições | Dataset, camadas e output devem ser iguais | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+| Reinício do MinIO | Observação do shared storage | Status `PASS` e `restart_count=0` | Medição torna-se `FAIL` | [artifact horizontal](tests/evidence/horizontal-scaling/hscale-20260728064640.json) |
+| Falha de masking | Gate de privacidade | Máximo `0` falhas | Medição e resultado agregado tornam-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+| Secret finding | Scanner do repositório | Exatamente `0` findings | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+
+Esses sinais são contratos executáveis e evidências locais; não representam
+dashboard, paging, SLO, alerta operacional ou processo on-call.
+
 ### Benchmark de escalabilidade local controlada
 
 O
@@ -283,6 +301,64 @@ foi `PASS`, vinculado ao commit
 `sha256:88b8facb12967c01f157bfd1245b44e9c3d101ee4762b0794b2f706e9a85ccac`.
 A evidência sanitizada está em
 [`hscale-20260728064640.json`](tests/evidence/horizontal-scaling/hscale-20260728064640.json).
+
+#### Reproduzir o benchmark horizontal
+
+Esta é uma execução manual longa e exclusiva para Windows. Antes de iniciar,
+confirme:
+
+- Git, Windows PowerShell 5.1 ou PowerShell 7+, Docker com engine Linux,
+  Minikube, Helm e `kubectl`;
+- ao menos 4 CPUs lógicas, 16 GiB de memória no host, 11 GiB disponíveis para
+  o Docker e 45 GiB livres na unidade `C:`;
+- Docker em execução, acesso à internet, porta local `5000` livre e worktree
+  Git limpo;
+- ausência do profile alvo: por padrão o script cria
+  `data-master-horizontal-<timestamp UTC>` e bloqueia, sem alterá-lo, se esse
+  profile já existir.
+
+Em um clone limpo, na raiz do repositório:
+
+```powershell
+powershell -ExecutionPolicy Bypass `
+  -File .\scripts\minikube\Invoke-HorizontalScalingBenchmark.ps1
+```
+
+O plano controlado cria um Minikube isolado com 4 CPUs, `11264 MiB` e disco
+`40g`. Ele descarta um warm-up com um executor e registra três medições com um
+executor e três com três executores. Na execução versionada, os sete workloads
+consumiram aproximadamente `3 h 05 min`; reserve cerca de quatro horas para
+incluir build, provisionamento e limpeza.
+
+O resultado padrão é gravado em
+`tests/evidence/horizontal-scaling/hscale-<timestamp UTC>.json`. Ao terminar,
+o script remove o profile criado, o registry efêmero e os arquivos
+temporários. `-KeepRunResources` preserva somente o profile Minikube e os
+serviços que ainda estiverem nele para inspeção; o registry e os temporários
+continuam sendo removidos, e cada `SparkApplication` já é apagada após sua
+medição.
+
+| Exit | Resultado | Interpretação |
+|---:|---|---|
+| `0` | `PASS` | Gates e equivalência passaram, executores foram observados e houve benefício mensurável pela mediana |
+| `2` | `INCONCLUSIVE` | Execução funcional, mas sem benefício mensurável |
+| `3` | `FAIL` | Medição, gate, observação ou equivalência falhou |
+| `4` | `HARNESS_ERROR` | O orquestrador ou agregador não conseguiu produzir uma conclusão válida |
+| `5` | `BLOCKED` | Preflight de ambiente ou segurança impediu o início controlado |
+
+Para conferir somente o artifact versionado em segundos, sem Docker, Minikube
+ou rede:
+
+```powershell
+python -m unittest discover `
+  -s tests/runtime `
+  -p "test_committed_horizontal_evidence.py" `
+  -v
+```
+
+O quickstart demonstra application scale-out estático no mesmo nó. Ele não
+comprova multi-node, autoscaling, HPA, dynamic allocation, cloud, SLA, custo
+ou sizing produtivo.
 
 O resultado prova scale-out estático do processamento Spark no Minikube. Como
 todos os executores foram observados no mesmo nó, ele não prova distribuição
