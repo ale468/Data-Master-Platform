@@ -6,7 +6,7 @@ marts Gold protegidos, orquestração, observabilidade e GitOps.
 
 [Validação completa do case](https://github.com/ale468/Data-Master-Platform/actions/workflows/case-validation.yml)
 ·
-[Quality gates públicos](https://github.com/ale468/Data-Master-Platform/actions/workflows/ci.yml)
+[Quality gates do case](https://github.com/ale468/Data-Master-Platform/actions/workflows/ci.yml)
 ·
 [Política de segurança](SECURITY.md)
 
@@ -24,12 +24,11 @@ Os critérios técnicos centrais são:
 - rastrear cada estágio por status, duração, contagens e lote;
 - interromper a validação quando dados, lineage, masking ou contratos divergem;
 - medir dois volumes locais sem confundir a medição com escala produtiva;
-- manter código, configuração, testes e automação verificáveis e dentro da
-  fronteira de conteúdo publication-safe.
+- manter código, configuração, testes e automação verificáveis e adequados ao
+  compartilhamento com a banca.
 
-O repositório permanece privado por decisão do proprietário.
-`Publication-safe` descreve o conteúdo que pode ser compartilhado, não a
-visibilidade configurada no GitHub.
+Todos os dados e evidências compartilhados são sintéticos. Quando o repositório
+estiver privado, o acesso precisa ser concedido aos avaliadores.
 
 O baseline aprovado é local. Kubernetes, Spark Operator, Airflow e Argo CD
 formam também um caminho local avançado, executado manualmente. `cloud-ready`
@@ -38,30 +37,36 @@ validada.
 
 ## 2. Arquitetura de Solução e Arquitetura Técnica
 
+### Arquitetura da solução
+
 ```mermaid
 flowchart LR
-    Sources["Fontes bancárias sintéticas"] --> Contracts["Source registry e contratos"]
-    Contracts --> Generator["Gerador determinístico"]
-    Generator --> Bronze["Bronze em Delta Lake"]
-    Bronze --> Hubs["Raw Vault: Hubs"]
-    Bronze --> Links["Raw Vault: Links"]
-    Bronze --> Satellites["Raw Vault: Satellites"]
-    Hubs --> Business["Business Vault lógica"]
-    Links --> Business
-    Satellites --> Business
+    Sources["CSV e JSON sintéticos"] --> Contracts["Contratos de fonte"]
+    Contracts --> Bronze["Bronze Delta"]
+    Bronze --> Raw["Raw Vault 2.0"]
+    Raw --> Business["Business Vault lógica"]
     Business --> Gold["Gold mascarada"]
-    Bronze --> Monitoring["Eventos de monitoring"]
-    Hubs --> Monitoring
-    Links --> Monitoring
-    Satellites --> Monitoring
-    Gold --> Monitoring
-    Quality["Quality gates e failure smoke"] --> Bronze
-    Quality --> Hubs
-    Quality --> Gold
-    Airflow["Airflow"] -. "submete jobs" .-> Spark["Spark"]
-    Spark -. "processa" .-> Bronze
-    GitOps["Helm, Argo CD e Minikube"] -. "caminho local avançado" .-> Airflow
-    GitOps -. "Spark Operator" .-> Spark
+    Privacy["Classificação e masking"] --> Gold
+```
+
+### Arquitetura técnica e controles
+
+```mermaid
+flowchart TB
+    Git["Git"] --> GitOps["Helm e Argo CD"]
+    GitOps --> Kubernetes["Minikube / Kubernetes"]
+
+    subgraph Runtime["Runtime local avançado"]
+        Airflow["Airflow"] --> Operator["Spark Operator"]
+        Operator --> Spark["Drivers e executores Spark"]
+        Spark --> Storage["Delta Lake sobre MinIO / S3A"]
+    end
+
+    Kubernetes --> Airflow
+    Kubernetes --> Operator
+    Quality["Gates de qualidade"] --> Spark
+    Spark --> Evidence["Resultado sanitizado"]
+    Monitoring["Eventos de monitoramento"] --> Evidence
 ```
 
 ### Fluxo end-to-end
@@ -70,17 +75,17 @@ flowchart LR
 2. A ingestão valida os contratos e grava sete tabelas Bronze com metadados
    técnicos e `batch_id`.
 3. Jobs separados constroem Hubs, Links e Satellites na Raw Vault.
-4. Helpers latest-state formam a Business Vault lógica.
+4. Helpers de estado mais recente formam a Business Vault lógica.
 5. Sete marts Gold são materializados a partir da Raw Vault, com
    pseudonimização e masking.
 6. O gate Data Vault verifica Hubs, Links, Satellites, lineage, separação de
    paths e origem da Gold.
 7. O gate de privacidade verifica colunas proibidas, padrões brutos, funções de
-   masking e findings de secrets.
-8. Eventos Delta de monitoring registram estágio, status, lote, duração e
+   masking e ocorrências de segredos.
+8. Eventos Delta de monitoramento registram estágio, status, lote, duração e
    contagens.
-9. O wrapper público projeta somente os campos allowlisted para um JSON de
-   resultado e falha diante de qualquer divergência.
+9. O orquestrador de validação projeta somente os campos explicitamente
+   permitidos para um JSON de resultado e falha diante de qualquer divergência.
 
 ### Baseline local e arquitetura-alvo
 
@@ -92,6 +97,18 @@ flowchart LR
 | Airflow | DAG importável com oito tasks e imagem construída na CI | Não prova scheduler produtivo, HA ou multi-tenancy |
 | Minikube/GitOps | Automação local avançada com Helm, Argo CD e Spark Operator | Execução manual; requer recursos e revisão publicada |
 | `cloud-ready` | Configuração de referência com submission `reference-only` | Não é executada por este case |
+
+### Escolha de armazenamento
+
+Delta Lake foi escolhido por oferecer transações ACID, controle de schema e
+histórico sobre arquivos. O MinIO preserva uma interface compatível com S3 em
+um ambiente local reproduzível, sem transformar a demonstração em evidência de
+cloud.
+
+Um data warehouse gerenciado simplificaria parte da operação e do consumo
+analítico, mas introduziria dependência de provedor, custo e credenciais. Essa
+alternativa permanece como evolução futura e exige validação própria de
+segurança, escalabilidade e operação.
 
 Em ambos os profiles do benchmark, `local[*]` usa threads do scheduler local e
 uma única JVM. Aumentar memória e partições demonstra comportamento vertical e
@@ -132,7 +149,7 @@ O comando:
 - termina com `CASE_VALIDATION_STATUS=SUCCESS` somente quando todos os gates
   passam.
 
-O JSON público não inclui workdir, paths Delta, amostras de masking, variáveis
+O JSON sanitizado não inclui workdir, paths Delta, amostras de masking, variáveis
 de ambiente, credenciais ou erro bruto. Um payload ausente, inválido ou
 divergente produz exit code diferente de zero.
 
@@ -140,9 +157,9 @@ divergente produz exit code diferente de zero.
 
 O workflow
 [`case-validation.yml`](.github/workflows/case-validation.yml) executa o mesmo
-wrapper em pull requests e por `workflow_dispatch`. Ele publica:
+orquestrador em pull requests e por `workflow_dispatch`. Ele publica:
 
-- artifact JSON sanitizado por 14 dias;
+- artefato JSON sanitizado por 14 dias;
 - resumo com Pipeline, Data Vault, Masking, Observability, Secret scan e
   resultado geral;
 - status de job coerente com o resultado do gate.
@@ -197,9 +214,9 @@ não é convertida em sucesso.
 | Tasks não distribuídas | Métricas por executor | `tasks_distributed=true`; cada executor executa tasks | Medição torna-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
 | Input ou output ausente por executor | Spark status API | Input e output positivos em cada executor | Workload torna-se `FAIL` | [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
 | Divergência de fingerprint | Comparação das seis medições | Dataset, camadas e output devem ser iguais | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
-| Reinício do MinIO | Observação do shared storage | Status `PASS` e `restart_count=0` | Medição torna-se `FAIL` | [artifact horizontal](tests/evidence/horizontal-scaling/hscale-20260728064640.json) |
+| Reinício do MinIO | Observação do armazenamento compartilhado | Status `PASS` e `restart_count=0` | Medição torna-se `FAIL` | [artefato horizontal](tests/evidence/horizontal-scaling/hscale-20260728064640.json) |
 | Falha de masking | Gate de privacidade | Máximo `0` falhas | Medição e resultado agregado tornam-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
-| Secret finding | Scanner do repositório | Exatamente `0` findings | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
+| Ocorrência de segredo | Scanner do repositório | Exatamente `0` ocorrências | Resultado agregado torna-se `FAIL` | [`test_committed_horizontal_evidence.py`](tests/runtime/test_committed_horizontal_evidence.py) |
 
 Esses sinais são contratos executáveis e evidências locais; não representam
 dashboard, paging, SLO, alerta operacional ou processo on-call.
@@ -302,7 +319,10 @@ foi `PASS`, vinculado ao commit
 A evidência sanitizada está em
 [`hscale-20260728064640.json`](tests/evidence/horizontal-scaling/hscale-20260728064640.json).
 
-#### Reproduzir o benchmark horizontal
+<details>
+<summary>Como reproduzir o benchmark horizontal (execução manual de aproximadamente quatro horas)</summary>
+
+#### Pré-requisitos e comando
 
 Esta é uma execução manual longa e exclusiva para Windows. Antes de iniciar,
 confirme:
@@ -346,7 +366,7 @@ medição.
 | `4` | `HARNESS_ERROR` | O orquestrador ou agregador não conseguiu produzir uma conclusão válida |
 | `5` | `BLOCKED` | Preflight de ambiente ou segurança impediu o início controlado |
 
-Para conferir somente o artifact versionado em segundos, sem Docker, Minikube
+Para conferir somente o artefato versionado em segundos, sem Docker, Minikube
 ou rede:
 
 ```powershell
@@ -356,29 +376,26 @@ python -m unittest discover `
   -v
 ```
 
-O quickstart demonstra application scale-out estático no mesmo nó. Ele não
-comprova multi-node, autoscaling, HPA, dynamic allocation, cloud, SLA, custo
-ou sizing produtivo.
+</details>
 
-O resultado prova scale-out estático do processamento Spark no Minikube. Como
-todos os executores foram observados no mesmo nó, ele não prova distribuição
-física multi-node. Também não prova produção, SLA, estabilidade prolongada,
-cloud, custo, sizing ou autoscaling; HPA e dynamic allocation não foram
-implementados.
+O resultado demonstra scale-out estático do processamento Spark no Minikube.
+Como todos os executores foram observados no mesmo nó, ele não comprova
+distribuição física multi-node, autoscaling, HPA, dynamic allocation, cloud,
+SLA, custo ou sizing produtivo.
 
 ### Matriz requisito → implementação → evidência
 
-| Requisito | Implementação pública | Evidência verificável |
+| Requisito | Implementação no repositório | Evidência verificável |
 |---|---|---|
-| Reprodutibilidade | [`Invoke-PublicCaseValidation.ps1`](scripts/Invoke-PublicCaseValidation.ps1) | JSON ignorado localmente e artifact do [workflow](https://github.com/ale468/Data-Master-Platform/actions/workflows/case-validation.yml) |
+| Reprodutibilidade | [`Invoke-PublicCaseValidation.ps1`](scripts/Invoke-PublicCaseValidation.ps1) | JSON ignorado localmente e artefato do [workflow](https://github.com/ale468/Data-Master-Platform/actions/workflows/case-validation.yml) |
 | Observabilidade | [`monitoring.py`](jobs/common/monitoring.py), thresholds e failure smoke | Cinco eventos no end-to-end; três falhas negativas; testes em [`test_observability_detection.py`](tests/runtime/test_observability_detection.py) |
-| Escalabilidade | Profiles locais e horizontais, adapter único e benchmarks isolados | Artifact horizontal sanitizado, executor/task metrics e contratos em [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
+| Escalabilidade | Profiles locais e horizontais, adaptador único e benchmarks isolados | Artefato horizontal sanitizado, métricas de executores e tarefas e contratos em [`test_horizontal_scalability.py`](tests/runtime/test_horizontal_scalability.py) |
 | Data Vault e lineage | Hubs, Links, Satellites e quality gate executável | Suíte [`tests/data_vault`](tests/data_vault) e job Spark da CI |
 | Gold e privacidade | Marts Raw-derived, pseudonimização, masking e scan | [`run_gold_masking_smoke.py`](jobs/business_vault/run_gold_masking_smoke.py) e gate Spark |
 | Streaming e CDC | Structured Streaming com file source e semântica CDC local | Smokes versionados e executados na CI; sem claim de broker ou log capture |
 | Orquestração | DAG Airflow com oito tasks que submetem jobs Spark | Import da DAG em imagem Airflow na CI |
 | GitOps local | Scripts Minikube, charts Helm e app-of-apps Argo CD | `helm lint/template` na CI e [guia operacional](infra/README-gitops.md) |
-| Qualidade pública | Workflows separados por tipo de gate | Gates fail-closed, permissões somente leitura e builds sem push; branch protection não foi verificada |
+| Qualidade da entrega | Workflows separados por tipo de gate | Gates fail-closed, permissões somente leitura e builds sem push; branch protection não foi verificada |
 
 O orquestrador clean-room só aceita um profile Minikube alvo novo e ausente.
 Se o profile já existir, o preflight bloqueia a execução antes de qualquer
@@ -387,21 +404,21 @@ criação de cluster e não altera nem remove esse profile.
 ### Estrutura principal
 
 ```text
-config/                     Profiles, privacidade e thresholds públicos
+config/                     Profiles, privacidade e thresholds da entrega
 dags/                       DAG Airflow
 data/sample/                Amostras exclusivamente sintéticas
 infra/                      Helm, Argo CD, workloads e referências Terraform
 jobs/                       Geração, ingestão, Data Vault, Gold e smokes
-scripts/                    Validação pública e automação Minikube
+scripts/                    Validação do case e automação Minikube
 tests/                      Contratos runtime, Data Vault e PowerShell
 ```
 
 ## 4. Melhorias e Considerações Finais
 
-Esta versão acrescenta uma validação pública de um comando, CI expandida,
+Esta versão acrescenta uma validação de um comando, CI expandida,
 detecção negativa de falhas, benchmark controlado, scanner fail-closed e um
 guia GitOps alinhado aos manifests atuais. A defesa técnica pode partir do
-README, abrir o workflow e, se necessário, reproduzir o artifact a partir do
+README, abrir o workflow e, se necessário, reproduzir o artefato a partir do
 mesmo SHA.
 
 ### Limites que permanecem válidos
