@@ -1,3 +1,6 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
 FROM apache/spark-py:v3.3.1
 
 USER root
@@ -28,6 +31,8 @@ ENV SPARK_IMAGE_ROLE=PROCESSING
 
 LABEL org.opencontainers.image.title="Data Master Spark Jobs" \
       org.opencontainers.image.description="Spark processing runtime with Delta Lake and S3A dependencies" \
+      org.opencontainers.image.source="https://github.com/ale468/Data-Master-Platform" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
       io.data-master.image-role="processing"
 
 USER 185

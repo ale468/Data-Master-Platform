@@ -1,0 +1,32 @@
+Data Master Platform
+Canonical repository: https://github.com/ale468/Data-Master-Platform
+
+Copyright (C) 2026 Alexandre Ferreira
+
+Scope of this notice
+--------------------
+
+This notice applies only to original, copyrightable contributions authored by
+Alexandre Ferreira for the Data Master Platform. Those contributions are made
+available under GNU Affero General Public License version 3 only
+(AGPL-3.0-only), as identified in LICENSE and in applicable file headers.
+
+This notice does not claim exclusive ownership of:
+
+- the GNU Affero General Public License text in LICENSE;
+- third-party dependencies, container base images, GitHub Actions or tools;
+- the adapted Contributor Covenant text in CODE_OF_CONDUCT.md;
+- upstream-derived, scaffolded, generated or otherwise third-party material;
+- contributions made by other copyright holders; or
+- ideas, facts, methods, interfaces or other elements outside copyright
+  protection under applicable law.
+
+Repository history records authorship metadata and chronology; it does not by
+itself prove exclusive ownership or transfer third-party rights. Contributors
+retain copyright in their own contributions unless a separate written
+agreement states otherwise. Existing third-party notices and license terms
+must not be replaced by this notice.
+
+See NOTICE for attribution boundaries and direct third-party components. See
+PROVENANCE.md for the public chronology, release procedure and passive copy
+comparison strategy.

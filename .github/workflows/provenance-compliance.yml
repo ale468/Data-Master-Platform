@@ -1,0 +1,35 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Provenance and license compliance
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance-compliance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Validate provenance policy
+        run: python scripts/validate_provenance.py
+
+      - name: Run provenance contract tests
+        run: python -m unittest discover -s tests/runtime -p "test_provenance_compliance.py" -v

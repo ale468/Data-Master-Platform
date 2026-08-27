@@ -33,20 +33,28 @@ ALLOWED_ROOT_FILES = {
     ".dockerignore",
     ".gitattributes",
     ".gitignore",
+    ".pre-commit-config.yaml",
     "AGENTS.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "COPYRIGHT",
     "Dockerfile.airflow",
     "Dockerfile.spark",
     "GOVERNANCE.md",
     "LICENSE",
+    "NOTICE",
+    "PROVENANCE.md",
     "README.md",
     "SECURITY.md",
     "requirements-spark.txt",
     "requirements.txt",
 }
 
-ALLOWED_WORKFLOWS = {"ci.yml", "case-validation.yml"}
+ALLOWED_WORKFLOWS = {
+    "ci.yml",
+    "case-validation.yml",
+    "provenance-compliance.yml",
+}
 
 TEXT_SUFFIXES = {
     "",

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "project": "Data Master Platform",
+  "canonical_repository": "https://github.com/ale468/Data-Master-Platform",
+  "copyright_notice": "Copyright (C) 2026 Alexandre Ferreira",
+  "license_expression": "AGPL-3.0-only",
+  "legacy_review_baseline_commit": "dc5ceb233e0c1fe9d4fbde4e511e1375fb972e4c",
+  "source_extensions": [
+    ".java",
+    ".ps1",
+    ".py",
+    ".scala",
+    ".sh",
+    ".sql",
+    ".tf",
+    ".tpl",
+    ".yaml",
+    ".yml"
+  ],
+  "source_filenames": [
+    "Dockerfile.airflow",
+    "Dockerfile.spark"
+  ],
+  "owned_source_patterns": [
+    ".github/workflows/provenance-compliance.yml",
+    ".pre-commit-config.yaml",
+    "Dockerfile.airflow",
+    "Dockerfile.spark",
+    "scripts/validate_provenance.py",
+    "tests/runtime/test_provenance_compliance.py"
+  ],
+  "review_required_patterns": [
+    {
+      "pattern": "infra/**",
+      "reason": "Operational manifests, templates and commands may contain upstream scaffolding or documentation-derived material."
+    },
+    {
+      "pattern": "data/**",
+      "reason": "Synthetic data is generated content and is not classified as project source code."
+    },
+    {
+      "pattern": "tests/evidence/**",
+      "reason": "Committed runtime evidence is generated output."
+    }
+  ],
+  "files_without_project_copyright": [
+    "CODE_OF_CONDUCT.md",
+    "LICENSE",
+    "infra/getInitialPWDArgo.sh",
+    "infra/helm-charts/airflow/templates/_helpers.tpl",
+    "infra/helm-charts/hive-metastore/templates/_helpers.tpl",
+    "infra/helm-charts/jupyter/templates/_helpers.tpl",
+    "infra/helm-charts/minio/templates/_helpers.tpl",
+    "infra/helm-charts/postgres-metastore/templates/_helpers.tpl"
+  ],
+  "notice_components": [
+    "pyspark",
+    "delta-spark",
+    "apache-airflow",
+    "apache-airflow-providers-apache-spark",
+    "PyYAML",
+    "apache-airflow-providers-cncf-kubernetes",
+    "Kubernetes Python client",
+    "Apache Hadoop AWS",
+    "AWS SDK for Java",
+    "actions/checkout",
+    "actions/setup-python",
+    "actions/upload-artifact",
+    "azure/setup-helm"
+  ]
+}

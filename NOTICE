@@ -1,0 +1,69 @@
+Data Master Platform
+Canonical repository: https://github.com/ale468/Data-Master-Platform
+Copyright (C) 2026 Alexandre Ferreira
+License for original project code: AGPL-3.0-only
+
+Purpose
+-------
+
+This file records attribution and provenance information. It is informational
+and does not add restrictions to the GNU Affero General Public License.
+Distributors and authors of derivatives should preserve copyright, license,
+warranty and attribution notices to the extent required by the licenses that
+apply to the material they redistribute.
+
+Original project material
+-------------------------
+
+Original, copyrightable contributions identified by Data Master Platform
+headers or by the project copyright policy are Copyright (C) 2026 Alexandre
+Ferreira and are licensed under AGPL-3.0-only. The canonical source location is
+the repository stated above.
+
+Third-party and adapted material in this repository
+---------------------------------------------------
+
+1. LICENSE contains the GNU Affero General Public License version 3 text,
+   Copyright (C) 2007 Free Software Foundation, Inc. The license text must not
+   be attributed to Alexandre Ferreira or modified.
+
+2. CODE_OF_CONDUCT.md is adapted from Contributor Covenant version 2.0 and
+   includes its upstream attribution and the reference to Mozilla's community
+   impact guidelines. It is not treated as solely authored by Alexandre
+   Ferreira.
+
+3. The files named infra/helm-charts/*/templates/_helpers.tpl follow the
+   standard Helm chart helper scaffold. Their exact upstream provenance is not
+   recorded in the public Git history, so they are excluded from the Alexandre
+   Ferreira project header pending a separate provenance determination.
+
+4. infra/getInitialPWDArgo.sh implements an initial-password retrieval command
+   also published in the Argo CD documentation. It is conservatively excluded
+   from the Alexandre Ferreira project header.
+
+Direct dependencies and build-time components
+---------------------------------------------
+
+The repository refers to, but does not relicense, third-party components. The
+following inventory covers direct references visible in requirements,
+Dockerfiles and workflows; it is not a complete transitive software bill of
+materials.
+
+- PySpark / Apache Spark 3.3.1 — Apache-2.0
+- Delta Lake / delta-spark 2.2.0 — Apache-2.0
+- Apache Airflow 2.8.4 — Apache-2.0
+- apache-airflow-providers-apache-spark 4.7.1 — Apache-2.0
+- apache-airflow-providers-cncf-kubernetes 8.4.2 — Apache-2.0
+- PyYAML 6.0.2 — MIT
+- Kubernetes Python client 29.0.0 — Apache-2.0
+- Apache Hadoop AWS 3.3.2 — Apache-2.0
+- AWS SDK for Java bundle 1.11.1026 — Apache-2.0
+- Helm and the apache/spark-py and apache/airflow container images — their
+  upstream distributions, component notices and license terms apply
+- actions/checkout, actions/setup-python, actions/upload-artifact and
+  azure/setup-helm — their upstream repositories and license terms apply
+
+Dependencies may include additional transitive components under other
+licenses. Before redistributing built images or dependency bundles, generate
+and review a version-specific SBOM and preserve all applicable upstream
+notices.
