@@ -1,0 +1,12 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
+repos:
+  - repo: local
+    hooks:
+      - id: provenance-compliance
+        name: Validate provenance and copyright policy
+        entry: python scripts/validate_provenance.py
+        language: system
+        pass_filenames: false
+        always_run: true

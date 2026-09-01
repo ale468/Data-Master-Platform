@@ -442,6 +442,15 @@ Use somente dados sintéticos. Não versione tokens, chaves, senhas ou arquivos
 
 Para contribuir, leia [CONTRIBUTING.md](CONTRIBUTING.md),
 [GOVERNANCE.md](GOVERNANCE.md) e
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). O código é licenciado sob
-[`AGPL-3.0-only`](LICENSE); dependências, imagens base, marcas e materiais de
-terceiros permanecem sob seus próprios termos.
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## License and Copyright
+
+Copyright (C) 2026 Alexandre Ferreira. O código original do projeto é
+licenciado sob [`AGPL-3.0-only`](LICENSE). O repositório original e canônico é
+https://github.com/ale468/Data-Master-Platform.
+
+Consulte [COPYRIGHT](COPYRIGHT), [NOTICE](NOTICE) e
+[PROVENANCE.md](PROVENANCE.md) para o escopo da atribuição, componentes de
+terceiros, cronologia pública e procedimento de release. Dependências, imagens
+base, marcas e materiais de terceiros permanecem sob seus próprios termos.

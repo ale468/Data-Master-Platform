@@ -45,4 +45,15 @@ By submitting a contribution, you confirm that you have the right to provide it
 and agree that it is licensed under `AGPL-3.0-only`. Third-party material must
 retain its original license and attribution.
 
+## Provenance of new files
+
+Before committing a new source file, classify it in
+`config/provenance/copyright-policy.json`. Add the two-line project header only
+when the file is an original project contribution. Preserve upstream notices
+and place generated, scaffolded or third-party material in a documented
+exception instead of modifying it automatically.
+
+Run `python scripts/validate_provenance.py` before opening a pull request. The
+optional local hook can be enabled with `pre-commit install`.
+
 All contributors must follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
