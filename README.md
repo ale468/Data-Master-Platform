@@ -27,8 +27,7 @@ Os critérios técnicos centrais são:
 - manter código, configuração, testes e automação verificáveis e adequados ao
   compartilhamento com a banca.
 
-Todos os dados e evidências compartilhados são sintéticos. Quando o repositório
-estiver privado, o acesso precisa ser concedido aos avaliadores.
+Todos os dados e evidências compartilhados são sintéticos.
 
 O baseline aprovado é local. Kubernetes, Spark Operator, Airflow e Argo CD
 formam também um caminho local avançado, executado manualmente. `cloud-ready`
