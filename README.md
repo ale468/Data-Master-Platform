@@ -24,7 +24,7 @@ da origem ao consumo, inspecionar as regras e reproduzir a validação local.
 [exemplo e reprodução](#3-explicação-sobre-o-case-desenvolvido) →
 [melhorias e conclusão](#4-melhorias-e-considerações-finais).
 
-[Validação completa do case](https://github.com/ale468/Data-Master-Platform/actions/workflows/case-validation.yml)
+[Workflow de validação automatizada](https://github.com/ale468/Data-Master-Platform/actions/workflows/case-validation.yml)
 ·
 [Quality gates do case](https://github.com/ale468/Data-Master-Platform/actions/workflows/ci.yml)
 ·
@@ -50,19 +50,20 @@ impede o resultado geral de sucesso.
 
 <a id="requisitos-do-pdf"></a>
 
-### Como o case responde aos oito requisitos do PDF
+### Mapeamento dos oito requisitos do PDF ao repositório
 
-A matriz distingue implementação, teste e medição. Um link para código mostra
-o mecanismo; uma evidência de execução comprova somente seu escopo, data e
-revisão. Segurança permanece um atendimento parcial, explicitado abaixo.
+A matriz relaciona implementação, teste e medição. Um link para código mostra
+o mecanismo; uma evidência de execução registra somente seu escopo, data e
+revisão. Os controles de segurança implementados e seus limites observáveis
+estão explicitados abaixo para avaliação da banca.
 
-| Requisito | Resposta do case | Onde conferir | Escopo e limite |
+| Requisito | Implementação e mecanismo | Onde conferir | Escopo e limite |
 |---|---|---|---|
 | **1. Extração de Dados** | Geração controlada de fontes sintéticas em CSV e JSON, com contratos de fonte. | [Gerador](jobs/data_generation/) e [source registry](jobs/common/source_registry.py). | Dados simulados, admitidos pelo enunciado; não há extração de sistemas bancários reais. |
 | **2. Ingestão de Dados** | Batch no fluxo principal; streaming por arquivos e CDC por changelog em demonstrações específicas. | [Jobs Bronze](jobs/bronze/) e [gates Spark da CI](.github/workflows/ci.yml). | Streaming e CDC locais não equivalem a broker produtivo nem captura de transaction log. |
 | **3. Armazenamento de Dados** | Tabelas Delta; filesystem temporário no Docker e MinIO/S3A no caminho integrado. | [Delta I/O](jobs/common/delta_io.py) e [decisões de arquitetura](#decisoes). | Alternativas locais e cloud são comparadas; cloud não foi implantada. |
 | **4. Observabilidade** | Eventos Delta com lote, status, duração e contagens; detecção de falhas controladas. | [Monitoring](jobs/common/monitoring.py), [thresholds](config/observability/thresholds.yml) e [testes de detecção](tests/runtime/test_observability_detection.py). | Não há dashboard, alertas ou operação on-call; veja quais verificações pertencem a cada execução. |
-| **5. Segurança de Dados** | Execução Docker não privilegiada, montagem somente leitura, Secrets locais e scanner de segredos. | [Validador público](scripts/Invoke-PublicCaseValidation.ps1), [RBAC](infra/helm-charts/airflow/templates/rbac.yaml) e [limites de segurança](#seguranca). | **Parcial:** não comprova criptografia ponta a ponta, autorização de acesso aos dados ou conformidade integral com a LGPD. |
+| **5. Segurança de Dados** | Execução Docker não privilegiada, montagem somente leitura, Secrets locais e scanner de segredos. | [Validador público](scripts/Invoke-PublicCaseValidation.ps1), [RBAC](infra/helm-charts/airflow/templates/rbac.yaml) e [limites de segurança](#seguranca). | Não há evidência de criptografia ponta a ponta, autorização de acesso aos dados ou conformidade integral com a LGPD. |
 | **6. Mascaramento de Dados** | Mascaramento e pseudonimização na Gold, com validação de colunas e padrões proibidos. | [Exemplo concreto](#exemplo-cliente) e [gate de privacidade](jobs/business_vault/run_gold_masking_smoke.py). | Redução da exposição não é garantia de anonimização irreversível. |
 | **7. Arquitetura de Dados** | Bronze → Raw Vault → Business Vault lógica → Gold; Spark separado da orquestração no Minikube. | [Diagramas](#arquitetura-solucao), [DAG](dags/banking_data_vault_pipeline_dag.py) e [testes Data Vault](tests/data_vault/). | Business Vault não materializada; sem PIT/Bridge ou arquitetura produtiva validada. |
 | **8. Escalabilidade** | Comparação de dois perfis locais e experimento Spark com um e três executores. | [Evidência horizontal versionada](tests/evidence/horizontal-scaling/hscale-20260728064640.json) e [interpretação dos resultados](#escala-horizontal). | Scale-out estático em um nó; multi-node, autoscaling e demanda contínua em tempo real são evolução. |
@@ -299,8 +300,12 @@ implementada.
 | Criptografia | Não demonstrada de ponta a ponta. A [configuração S3A da DAG](dags/spark_application_factory.py) usa endpoint HTTP e SSL desabilitado. | TLS no tráfego de dados, criptografia em repouso e gestão de chaves são melhorias necessárias antes de dados reais. |
 | LGPD | Classificação, minimização da exposição e gates técnicos de privacidade. | Não constitui parecer jurídico, certificação ou atendimento integral às obrigações da LGPD. |
 
-O requisito de segurança do PDF está **parcialmente atendido neste escopo**.
-As [melhorias priorizadas](#evolucao) tratam os controles ainda necessários.
+O repositório apresenta execução Docker não privilegiada, montagem somente
+leitura, RBAC, referências a Secrets, scanner de segredos, masking e
+pseudonimização. Não há evidência de criptografia ponta a ponta, autorização
+por usuário sobre os dados, gestão corporativa de segredos ou conformidade
+integral com a LGPD. As [melhorias priorizadas](#evolucao) tratam os controles
+ainda necessários.
 
 <a id="reproduzir"></a>
 
@@ -341,16 +346,16 @@ O JSON sanitizado não inclui workdir, paths Delta, amostras de masking, variáv
 de ambiente, credenciais ou erro bruto. Um payload ausente, inválido ou
 divergente produz exit code diferente de zero.
 
-**Concluído** significa: processo com exit code `0`, marcador
+O comando retorna sucesso somente com exit code `0`, marcador
 `CASE_VALIDATION_STATUS=SUCCESS` e JSON gravado com status geral e checks
 aprovados. Um contêiner iniciado ou uma tabela criada, isoladamente, não
-comprovam conclusão.
+representam o resultado integral do comando.
 
 O contêiner é removido por `--rm`; os dados Delta temporários não ficam
 disponíveis no host. O JSON permanece no diretório ignorado pelo Git e a
 imagem fica em cache. Uma repetição gera um novo lote e substitui o resultado
 no caminho padrão; preserve o JSON anterior fora do Git se precisar compará-lo.
-Não há retomada parcial desse fluxo: corrija a causa e execute novamente.
+Não há retomada intermediária desse fluxo: corrija a causa e execute novamente.
 
 <details>
 <summary>Diagnóstico rápido da validação principal</summary>
@@ -472,10 +477,10 @@ profile isolado criado nesta execução. A remoção é destrutiva e explícita:
   -ConfirmDeletion
 ```
 
-Se o bootstrap ficar parcial, preserve o diagnóstico antes de qualquer
-remoção. O clean-room não retoma um profile preexistente; uma nova tentativa
-precisa de alvo ausente. Nunca faça limpeza global do Docker para contornar
-uma falha deste case.
+Se o bootstrap for interrompido antes do fim, preserve o diagnóstico antes de
+qualquer remoção. O clean-room não retoma um profile preexistente; uma nova
+tentativa precisa de alvo ausente. Nunca faça limpeza global do Docker para
+contornar uma falha deste case.
 
 </details>
 
