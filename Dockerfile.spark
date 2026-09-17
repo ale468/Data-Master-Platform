@@ -9,13 +9,17 @@ ARG DELTA_VERSION=2.2.0
 ARG HADOOP_AWS_VERSION=3.3.2
 ARG AWS_SDK_BUNDLE_VERSION=1.11.1026
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL "https://repo1.maven.org/maven2/io/delta/delta-core_2.12/${DELTA_VERSION}/delta-core_2.12-${DELTA_VERSION}.jar" -o "/opt/spark/jars/delta-core_2.12-${DELTA_VERSION}.jar" \
-    && curl -fsSL "https://repo1.maven.org/maven2/io/delta/delta-storage/${DELTA_VERSION}/delta-storage-${DELTA_VERSION}.jar" -o "/opt/spark/jars/delta-storage-${DELTA_VERSION}.jar" \
-    && curl -fsSL "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_AWS_VERSION}/hadoop-aws-${HADOOP_AWS_VERSION}.jar" -o "/opt/spark/jars/hadoop-aws-${HADOOP_AWS_VERSION}.jar" \
-    && curl -fsSL "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_BUNDLE_VERSION}/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar" -o "/opt/spark/jars/aws-java-sdk-bundle-${AWS_SDK_BUNDLE_VERSION}.jar"
+RUN python3 -c 'import os, urllib.request; \
+base="https://repo1.maven.org/maven2"; \
+delta=os.environ["DELTA_VERSION"]; \
+hadoop=os.environ["HADOOP_AWS_VERSION"]; \
+aws=os.environ["AWS_SDK_BUNDLE_VERSION"]; \
+files=[ \
+(f"{base}/io/delta/delta-core_2.12/{delta}/delta-core_2.12-{delta}.jar", f"/opt/spark/jars/delta-core_2.12-{delta}.jar"), \
+(f"{base}/io/delta/delta-storage/{delta}/delta-storage-{delta}.jar", f"/opt/spark/jars/delta-storage-{delta}.jar"), \
+(f"{base}/org/apache/hadoop/hadoop-aws/{hadoop}/hadoop-aws-{hadoop}.jar", f"/opt/spark/jars/hadoop-aws-{hadoop}.jar"), \
+(f"{base}/com/amazonaws/aws-java-sdk-bundle/{aws}/aws-java-sdk-bundle-{aws}.jar", f"/opt/spark/jars/aws-java-sdk-bundle-{aws}.jar")]; \
+[urllib.request.urlretrieve(url, path) for url, path in files]'
 
 WORKDIR /opt/spark/work-dir
 
