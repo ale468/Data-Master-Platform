@@ -657,10 +657,28 @@ try {
         "--batch-id", $batchId
     )
 
+    $demoOutput = New-Object System.Collections.Generic.List[string]
+    $runnerStartedAt = (Get-Date).ToUniversalTime()
+    $lastRunnerProgressAt = $runnerStartedAt
+    Write-Output "PUBLIC_CASE_RUNNER_STATUS=STARTING"
     $previousErrorActionPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = "Continue"
-        $demoOutput = @(& docker @dockerArguments 2>&1)
+        & docker @dockerArguments 2>&1 | ForEach-Object {
+            $runnerLine = $_
+            $demoOutput.Add($runnerLine.ToString())
+            $now = (Get-Date).ToUniversalTime()
+            if (($now - $lastRunnerProgressAt).TotalSeconds -ge 15) {
+                $elapsedSeconds = [math]::Floor(
+                    ($now - $runnerStartedAt).TotalSeconds
+                )
+                Write-Output (
+                    "PUBLIC_CASE_RUNNER_STATUS=RUNNING;ELAPSED_SECONDS=" +
+                    $elapsedSeconds
+                )
+                $lastRunnerProgressAt = $now
+            }
+        }
         $demoExitCode = $LASTEXITCODE
     }
     finally {
