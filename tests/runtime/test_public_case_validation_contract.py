@@ -250,6 +250,12 @@ class PublicCasePowerShellContractTests(unittest.TestCase):
         self.assertNotIn("Tee-Object", self.source)
         self.assertNotIn("Write-Output $demoOutput", self.source)
 
+    def test_wrapper_streams_sanitized_runner_progress_while_capturing_output(self):
+        self.assertIn("PUBLIC_CASE_RUNNER_STATUS=STARTING", self.source)
+        self.assertIn("PUBLIC_CASE_RUNNER_STATUS=RUNNING", self.source)
+        self.assertIn("$demoOutput.Add($runnerLine.ToString())", self.source)
+        self.assertNotIn("Write-Output $runnerLine", self.source)
+
     def test_wrapper_preserves_specific_failures_when_the_outer_gate_fails(self):
         self.assertIn('$existingFailures = @($normalizedResult["failed_checks"])', self.source)
         self.assertIn("Select-Object -Unique", self.source)
