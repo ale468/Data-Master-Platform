@@ -23,8 +23,8 @@ $projectImages = @("${AirflowRepository}:$Tag", "${SparkRepository}:$Tag")
 $runtimeDependencyImages = @(
     "postgres:15",
     "bde2020/hive:2.3.2-postgresql-metastore",
-    "minio/minio:RELEASE.2024-01-28T22-35-53Z",
-    "minio/mc:RELEASE.2024-01-13T08-44-48Z",
+    "ghcr.io/l33tlamer/minio-backup@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
+    "bitnamilegacy/minio-client@sha256:1560800eb0449bd1605e1cd8858227df482b03fd14f4efd51f641f6f77eb788d",
     "quay.io/jupyter/pyspark-notebook:2024-04-01",
     "ghcr.io/kubeflow/spark-operator/controller:2.5.0"
 )

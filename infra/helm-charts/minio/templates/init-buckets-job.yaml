@@ -14,7 +14,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: init-buckets
-          image: "{{ .Values.clientImage.repository }}:{{ .Values.clientImage.tag }}"
+          image: "{{ .Values.clientImage.repository }}@{{ .Values.clientImage.digest }}"
           imagePullPolicy: {{ .Values.clientImage.pullPolicy }}
           env:
             - name: MINIO_ROOT_USER
