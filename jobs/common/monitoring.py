@@ -41,7 +41,8 @@ class MonitoringLogger:
         duration_seconds: float = 0,
         error_message: Optional[str] = None,
         start_time: Optional[str] = None,
-        end_time: Optional[str] = None
+        end_time: Optional[str] = None,
+        run_id: Optional[str] = None,
     ) -> None:
         """
         Registra execução de pipeline/task em tabela de monitoramento.
@@ -65,6 +66,7 @@ class MonitoringLogger:
                 "pipeline_name": pipeline_name,
                 "task_name": task_name,
                 "batch_id": batch_id,
+                "run_id": run_id or batch_id,
                 "start_time": start_time or datetime.now().isoformat(),
                 "end_time": end_time or datetime.now().isoformat(),
                 "duration_seconds": duration_seconds,
@@ -79,6 +81,7 @@ class MonitoringLogger:
                 StructField("pipeline_name", StringType(), True),
                 StructField("task_name", StringType(), True),
                 StructField("batch_id", StringType(), True),
+                StructField("run_id", StringType(), True),
                 StructField("start_time", StringType(), True),
                 StructField("end_time", StringType(), True),
                 StructField("duration_seconds", DoubleType(), True),
@@ -250,11 +253,18 @@ class DataQualityLogger:
 class ExecutionMetrics:
     """Coletador de métricas de execução."""
     
-    def __init__(self, pipeline_name: str, task_name: str, batch_id: Optional[str] = None):
+    def __init__(
+        self,
+        pipeline_name: str,
+        task_name: str,
+        batch_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ):
         """Inicializa coletor de métricas."""
         self.pipeline_name = pipeline_name
         self.task_name = task_name
         self.batch_id = batch_id or MonitoringLogger.get_batch_id()
+        self.run_id = run_id or self.batch_id
         self.start_time = datetime.now()
         self.start_time_str = self.start_time.isoformat()
         self.rows_read = 0
@@ -296,7 +306,8 @@ class ExecutionMetrics:
             duration_seconds=duration,
             error_message=self.error_message,
             start_time=self.start_time_str,
-            end_time=end_time.isoformat()
+            end_time=end_time.isoformat(),
+            run_id=self.run_id,
         )
 
 

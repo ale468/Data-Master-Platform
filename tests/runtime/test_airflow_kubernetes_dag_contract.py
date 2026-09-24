@@ -38,6 +38,12 @@ class AirflowKubernetesDagContractTests(unittest.TestCase):
         self.assertIn('"data-master.io/runtime-profile"', self.source)
         self.assertIn('"data-master.io/stage": stage', self.source)
 
+    def test_dag_accepts_multibatch_conf_without_adding_tasks(self):
+        self.assertIn("dag_run.conf.get('batch_id'", self.source)
+        self.assertIn("dag_run.conf.get('scenario_id'", self.source)
+        self.assertIn("dag_run.conf.get('source_batch'", self.source)
+        self.assertIn("run_id=RUN_ID", self.source)
+
     def test_dag_declares_distinct_business_vault_and_gold_variables(self):
         self.assertIn('"BUSINESS_VAULT_PATH"', self.source)
         self.assertIn('"s3a://lakehouse/business_vault"', self.source)

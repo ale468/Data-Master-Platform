@@ -111,12 +111,12 @@ def load_hub(
     )
     df_hub = add_raw_vault_record_source(df_hub) \
         .withColumn("load_datetime", F.current_timestamp()) \
-        .select(hash_key, *business_key, "load_datetime", "record_source", "batch_id")
+        .select(hash_key, *business_key, "load_datetime", "record_source", "batch_id", "run_id")
 
     path = Config.get_hub_table_config(hub_name)["path"]
     DeltaIO.create_table_if_not_exists(spark, path, df_hub)
     before = DeltaIO.read_delta(spark, path).count()
-    DeltaIO.write_delta_merge(spark, df_hub, path, [hash_key])
+    DeltaIO.write_delta_insert_only(spark, df_hub, path, [hash_key])
     after = DeltaIO.read_delta(spark, path).count()
 
     return {
@@ -131,12 +131,15 @@ def run_hubs_pipeline(
     spark: SparkSession,
     bronze_path: str,
     batch_id: str,
+    run_id: str = None,
 ) -> Dict[str, Any]:
     logger.info("=" * 80)
     logger.info("INICIANDO PIPELINE DE HUBS")
     logger.info("=" * 80)
 
-    metrics = ExecutionMetrics("raw_vault_pipeline", "load_hubs", batch_id=batch_id)
+    metrics = ExecutionMetrics(
+        "raw_vault_pipeline", "load_hubs", batch_id=batch_id, run_id=run_id
+    )
     results: Dict[str, Dict[str, Any]] = {}
 
     try:
@@ -161,11 +164,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Pipeline de Hubs - Data Vault 2.0")
     parser.add_argument("--bronze-path", type=str, default=Config.BRONZE_PATH)
     parser.add_argument("--batch-id", type=str, default=None)
+    parser.add_argument("--run-id", type=str, default=None)
     args = parser.parse_args()
 
     spark = create_spark_session()
     batch_id = args.batch_id or MonitoringLogger.get_batch_id()
-    result = run_hubs_pipeline(spark, args.bronze_path, batch_id)
+    result = run_hubs_pipeline(spark, args.bronze_path, batch_id, args.run_id)
     return 0 if result["status"] == "SUCCESS" else 1
 
 
