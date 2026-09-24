@@ -68,6 +68,9 @@ def build_spark_application(
     service_account: str,
     paths: Dict[str, str],
     application_name: str,
+    run_id: str = None,
+    scenario_id: str = None,
+    source_batch: str = None,
 ) -> Dict[str, Any]:
     if stage not in ALLOWED_STAGES:
         raise ValueError(f"Unsupported Spark stage: {stage}")
@@ -92,10 +95,17 @@ def build_spark_application(
         "--monitoring-path",
         paths["monitoring"],
     ]
+    if run_id is not None:
+        arguments.extend(["--run-id", run_id])
+    if scenario_id is not None:
+        arguments.extend(["--scenario-id", scenario_id])
+    if source_batch is not None:
+        arguments.extend(["--source-batch", source_batch])
     labels = {
         "app.kubernetes.io/part-of": "data-master-platform",
         "data-master.io/runtime-profile": runtime_profile,
         "data-master.io/stage": stage,
+        "data-master.io/source-batch": source_batch or "static",
     }
 
     return {

@@ -68,7 +68,10 @@ PATHS = {
     ),
 }
 
-BATCH_ID = "{{ ts_nodash | lower }}"
+BATCH_ID = "{{ dag_run.conf.get('batch_id', ts_nodash) | lower }}"
+RUN_ID = "{{ run_id }}"
+SCENARIO_ID = "{{ dag_run.conf.get('scenario_id', 'baseline') | lower }}"
+SOURCE_BATCH = "{{ dag_run.conf.get('source_batch', 'static') | lower }}"
 APPLICATION_SUFFIX = "{{ ts_nodash | lower }}"
 
 
@@ -93,6 +96,9 @@ def _spark_task(stage: str) -> SparkKubernetesOperator:
             service_account=SPARK_SERVICE_ACCOUNT,
             paths=PATHS,
             application_name=application_name,
+            run_id=RUN_ID,
+            scenario_id=SCENARIO_ID,
+            source_batch=SOURCE_BATCH,
         ),
         get_logs=True,
         log_events_on_failure=True,
