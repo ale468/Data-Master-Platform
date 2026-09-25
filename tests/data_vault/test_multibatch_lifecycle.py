@@ -1,3 +1,6 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Executable acceptance test for the deterministic multibatch lifecycle."""
 
 import hashlib
