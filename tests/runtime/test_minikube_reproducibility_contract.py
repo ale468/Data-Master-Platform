@@ -439,7 +439,15 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("function Get-DataMasterLabelValue", e2e)
-        self.assertIn("$dagRun.start_date", e2e)
+        self.assertIn("function ConvertTo-DataMasterUtcDateTime", e2e)
+        self.assertIn("[System.Globalization.CultureInfo]::InvariantCulture", e2e)
+        self.assertIn("$runStartValue = $dagRun.start_date", e2e)
+        self.assertIn(
+            "ConvertTo-DataMasterUtcDateTime -Value $runStartValue", e2e
+        )
+        self.assertIn("$created -ge $observationStart", e2e)
+        self.assertNotIn("$created.UtcDateTime", e2e)
+        self.assertNotIn("[DateTimeOffset]::Parse($runStartText)", e2e)
         self.assertIn("$observationStart", e2e)
         self.assertIn('-Labels $_.spec.driver.labels', e2e)
 
