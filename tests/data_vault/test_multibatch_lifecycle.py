@@ -5,6 +5,7 @@
 
 import hashlib
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -113,13 +114,15 @@ class MultibatchLifecycleAcceptanceTests(unittest.TestCase):
             batch_id=batch_id,
             runtime_profile="local-small",
         )
+        shutil.rmtree(output)
         bronze = run_bronze_pipeline(
             self.spark,
             str(output),
             Config.BRONZE_PATH,
             batch_id,
             run_id,
-            generated["manifest"],
+            batch_manifest=generated["manifest"],
+            source_records=generated["records"],
         )
         hubs = run_hubs_pipeline(
             self.spark, Config.BRONZE_PATH, batch_id, run_id

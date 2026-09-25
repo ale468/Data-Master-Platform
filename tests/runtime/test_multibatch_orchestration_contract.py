@@ -8,6 +8,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUNNER = REPO_ROOT / "scripts" / "minikube" / "Invoke-DataMasterMultibatchValidation.ps1"
 AIRFLOW_RUNNER = REPO_ROOT / "scripts" / "minikube" / "Invoke-AirflowEndToEndTest.ps1"
+STAGE_RUNNER = REPO_ROOT / "jobs" / "kubernetes" / "run_pipeline_stage.py"
 
 
 class MultibatchOrchestrationContractTests(unittest.TestCase):
@@ -15,6 +16,7 @@ class MultibatchOrchestrationContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.runner = RUNNER.read_text(encoding="utf-8-sig")
         cls.airflow_runner = AIRFLOW_RUNNER.read_text(encoding="utf-8-sig")
+        cls.stage_runner = STAGE_RUNNER.read_text(encoding="utf-8-sig")
 
     def test_sequence_has_three_logical_batches_and_explicit_replay(self):
         for name in ("batch_1", "batch_2", "batch_2_replay", "batch_3"):
@@ -40,6 +42,9 @@ class MultibatchOrchestrationContractTests(unittest.TestCase):
         self.assertIn('source_batch -notin @("batch-1", "batch-2", "batch-3")', self.airflow_runner)
         self.assertIn('@("--conf", $DagRunConfigJson)', self.airflow_runner)
         self.assertIn('$evidence["multibatch"]', self.airflow_runner)
+
+    def test_dynamic_sources_are_forwarded_as_driver_records(self):
+        self.assertIn('generated["records"]', self.stage_runner)
 
 
 if __name__ == "__main__":

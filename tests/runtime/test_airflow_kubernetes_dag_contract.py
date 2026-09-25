@@ -4,6 +4,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DAG_PATH = REPO_ROOT / "dags" / "banking_data_vault_pipeline_dag.py"
+AIRFLOW_RBAC_PATH = (
+    REPO_ROOT / "infra" / "helm-charts" / "airflow" / "templates" / "rbac.yaml"
+)
 
 
 class AirflowKubernetesDagContractTests(unittest.TestCase):
@@ -58,6 +61,11 @@ class AirflowKubernetesDagContractTests(unittest.TestCase):
         self.assertIn('"GOLD_PATH"', self.source)
         self.assertIn('"s3a://lakehouse/gold"', self.source)
         self.assertNotIn("Business Vault/Gold", self.source)
+
+    def test_airflow_can_patch_driver_pods_during_operator_cleanup(self):
+        rbac = AIRFLOW_RBAC_PATH.read_text(encoding="utf-8")
+        self.assertIn('resources: ["pods"]', rbac)
+        self.assertIn('verbs: ["get", "list", "watch", "patch"]', rbac)
 
 
 if __name__ == "__main__":
