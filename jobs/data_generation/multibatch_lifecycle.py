@@ -1,3 +1,6 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Deterministic three-batch source lifecycle for incremental validation.
 
 The lifecycle is intentionally synthetic and bounded.  It reuses the canonical
