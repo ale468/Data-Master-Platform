@@ -40,7 +40,7 @@ class SparkApplicationContractTests(unittest.TestCase):
         self.assertGreaterEqual(spec["executor"]["instances"], 1)
         self.assertEqual(spec["driver"]["memory"], "1g")
         self.assertEqual(spec["executor"]["memory"], "1536m")
-        self.assertEqual(spec["executor"]["memoryOverhead"], "384m")
+        self.assertEqual(spec["executor"]["memoryOverhead"], "768m")
         self.assertEqual(
             spec["driver"]["labels"]["data-master.io/spark-role"],
             "driver",
