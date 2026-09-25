@@ -408,6 +408,17 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertIn('$statefulSet.metadata.namespace', ready_helper)
         self.assertNotIn('"statefulset", "--all", "-A"', ready_helper)
 
+    def test_ready_helper_treats_transient_missing_application_status_as_pending(self):
+        ready_helper = (SCRIPTS / "Wait-DataMasterReady.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('$_.PSObject.Properties["status"]', ready_helper)
+        self.assertIn('$status.Value.PSObject.Properties["sync"]', ready_helper)
+        self.assertIn('$status.Value.PSObject.Properties["health"]', ready_helper)
+        self.assertIn('if ($null -eq $status) { return $true }', ready_helper)
+        self.assertNotIn('$_.status.sync.status', ready_helper)
+        self.assertNotIn('$_.status.health.status', ready_helper)
+
     def test_e2e_observer_handles_optional_spark_labels(self):
         e2e = (SCRIPTS / "Invoke-AirflowEndToEndTest.ps1").read_text(
             encoding="utf-8"
