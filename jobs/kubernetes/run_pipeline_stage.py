@@ -465,7 +465,8 @@ def _run_bronze_stage(spark, args: argparse.Namespace) -> Dict[str, Any]:
             args.bronze_path,
             args.batch_id,
             run_id,
-            generated["manifest"],
+            batch_manifest=generated["manifest"],
+            source_records=generated["records"],
         )
 
 

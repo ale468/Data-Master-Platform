@@ -7,7 +7,7 @@ import sys
 import os
 import hashlib
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
 from datetime import datetime
@@ -33,6 +33,25 @@ logger = logging.getLogger(__name__)
 
 class BronzeLoader:
     """Carregador especializado para camada Bronze."""
+
+    @staticmethod
+    def dataframe_from_driver_records(
+        spark: SparkSession,
+        records: List[Dict[str, Any]],
+        source_format: str,
+    ) -> DataFrame:
+        """Create a distributed frame without executor access to driver files."""
+        if not records:
+            raise ValueError("Driver-memory Bronze source cannot be empty.")
+        if source_format == "csv":
+            return spark.createDataFrame([dict(record) for record in records])
+        if source_format == "json":
+            payloads = [
+                json.dumps(record, sort_keys=True, ensure_ascii=False)
+                for record in records
+            ]
+            return spark.read.json(spark.sparkContext.parallelize(payloads))
+        raise ValueError(f"Unsupported driver-memory source format: {source_format}")
 
     @staticmethod
     def validate_delta_read(
@@ -162,6 +181,7 @@ class BronzeLoader:
         bronze_path: str,
         batch_id: str,
         run_id: Optional[str] = None,
+        source_records: Optional[List[Dict[str, Any]]] = None,
         **csv_options
     ) -> Dict[str, Any]:
         """
@@ -192,8 +212,17 @@ class BronzeLoader:
                     "mas chamada como CSV."
                 )
 
-            # Ler CSV
-            df = spark.read.csv(file_path, **csv_options)
+            # Dynamic lifecycle files exist only in the driver pod. Convert
+            # their already parsed rows into a distributed frame so executors
+            # never need access to the driver's temporary filesystem.
+            if source_records is None:
+                df = spark.read.csv(file_path, **csv_options)
+            else:
+                df = BronzeLoader.dataframe_from_driver_records(
+                    spark,
+                    source_records,
+                    "csv",
+                )
             assert_required_columns(table_name, df.columns)
             rows_read = df.count()
             
@@ -273,6 +302,7 @@ class BronzeLoader:
         bronze_path: str,
         batch_id: str,
         run_id: Optional[str] = None,
+        source_records: Optional[List[Dict[str, Any]]] = None,
         **json_options
     ) -> Dict[str, Any]:
         """
@@ -303,8 +333,14 @@ class BronzeLoader:
                     "mas chamada como JSON."
                 )
 
-            # Ler JSON
-            df = spark.read.json(file_path, **json_options)
+            if source_records is None:
+                df = spark.read.json(file_path, **json_options)
+            else:
+                df = BronzeLoader.dataframe_from_driver_records(
+                    spark,
+                    source_records,
+                    "json",
+                )
             assert_required_columns(table_name, df.columns)
             rows_read = df.count()
             
@@ -436,6 +472,7 @@ def run_bronze_pipeline(
     batch_id: str,
     run_id: Optional[str] = None,
     batch_manifest: Optional[Dict[str, Any]] = None,
+    source_records: Optional[Dict[str, List[Dict[str, Any]]]] = None,
 ) -> Dict[str, Any]:
     """
     Executa pipeline completo de ingestão Bronze.
@@ -464,6 +501,16 @@ def run_bronze_pipeline(
     results = {source_name: None for source_name in list_registered_sources("batch")}
     
     try:
+        registered_sources = list_registered_sources("batch")
+        if source_records is not None:
+            missing_sources = sorted(set(registered_sources) - set(source_records))
+            unexpected_sources = sorted(set(source_records) - set(registered_sources))
+            if missing_sources or unexpected_sources:
+                raise ValueError(
+                    "Driver-memory Bronze sources do not match registry: "
+                    f"missing={missing_sources}, unexpected={unexpected_sources}"
+                )
+
         manifest_result = None
         if batch_manifest is not None:
             if batch_manifest.get("batch_id") != batch_id:
@@ -476,9 +523,14 @@ def run_bronze_pipeline(
 
         logger.info("\n--- Carregando fontes registradas ---\n")
 
-        for source_name in list_registered_sources("batch"):
+        for source_name in registered_sources:
             source_contract = get_source_contract(source_name)
             source_path = os.path.join(sample_data_path, source_contract["file_name"])
+            records = (
+                source_records[source_name]
+                if source_records is not None
+                else None
+            )
 
             if source_contract["format"] == "csv":
                 results[source_name] = BronzeLoader.load_bronze_from_csv(
@@ -488,6 +540,7 @@ def run_bronze_pipeline(
                     bronze_path,
                     batch_id,
                     effective_run_id,
+                    source_records=records,
                 )
             elif source_contract["format"] == "json":
                 results[source_name] = BronzeLoader.load_bronze_from_json(
@@ -497,6 +550,7 @@ def run_bronze_pipeline(
                     bronze_path,
                     batch_id,
                     effective_run_id,
+                    source_records=records,
                 )
             else:
                 raise ValueError(

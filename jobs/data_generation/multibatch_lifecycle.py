@@ -353,7 +353,12 @@ def generate_lifecycle_batch(
         json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    return {"files": files, "manifest": manifest, "manifest_path": str(manifest_path)}
+    return {
+        "files": files,
+        "records": records,
+        "manifest": manifest,
+        "manifest_path": str(manifest_path),
+    }
 
 
 def _main() -> int:
