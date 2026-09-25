@@ -64,6 +64,25 @@ function Get-AirflowTaskStates {
     return (($output -join [Environment]::NewLine) | ConvertFrom-Json)
 }
 
+function ConvertTo-DataMasterUtcDateTime {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Value
+    )
+
+    if ($Value -is [DateTimeOffset]) {
+        return $Value.UtcDateTime
+    }
+    if ($Value -is [datetime]) {
+        return $Value.ToUniversalTime()
+    }
+    return [DateTimeOffset]::Parse(
+        [string]$Value,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AssumeUniversal
+    ).UtcDateTime
+}
+
 function Get-AirflowTechnicalTaskLog {
     param(
         [Parameter(Mandatory = $true)]
@@ -683,17 +702,17 @@ try {
         Get-AirflowDagRunState -TargetRunId $RunId | Out-Null
     }
     $dagRun = Get-AirflowDagRun -TargetRunId $RunId
-    $runStartText = [string]$dagRun.start_date
-    if (-not $runStartText) {
-        $runStartText = [string]$dagRun.execution_date
+    $runStartValue = $dagRun.start_date
+    if (-not $runStartValue) {
+        $runStartValue = $dagRun.execution_date
     }
-    $observationStart = if ($runStartText) {
-        [DateTimeOffset]::Parse($runStartText).UtcDateTime
+    $observationStart = if ($runStartValue) {
+        ConvertTo-DataMasterUtcDateTime -Value $runStartValue
     }
     else {
         $started.ToUniversalTime()
     }
-    if ($ResumeExistingRun -and $runStartText) {
+    if ($ResumeExistingRun -and $runStartValue) {
         $started = $observationStart
     }
     Write-Output "AIRFLOW_DAG_TRIGGER_STATUS=PASS"
@@ -714,11 +733,12 @@ try {
             )
         $applications = (($applicationOutput -join "") | ConvertFrom-Json).items
         $matchingApplications = @($applications | Where-Object {
-            $created = [DateTimeOffset]::Parse($_.metadata.creationTimestamp)
+            $created = ConvertTo-DataMasterUtcDateTime `
+                -Value $_.metadata.creationTimestamp
             (Get-DataMasterLabelValue `
                 -Labels $_.spec.driver.labels `
                 -Name "data-master.io/runtime-profile") -eq "presentation-demo" -and
-                $created.UtcDateTime -ge $observationStart
+                $created -ge $observationStart
         } | Sort-Object { $_.metadata.creationTimestamp })
         foreach ($application in $matchingApplications) {
             $stage = Get-DataMasterLabelValue `
