@@ -456,12 +456,28 @@ function Save-DataMasterSparkApplicationObservation {
         $_.stage -eq $Stage
     })
     if ($existing.Count -eq 1) {
-        if ($existing[0].name -ne $Name -or
-            $existing[0].image -ne $Image -or
-            $existing[0].creation_timestamp -ne $CreationTimestamp) {
+        if ($existing[0].name -eq $Name -and
+            $existing[0].image -eq $Image -and
+            $existing[0].creation_timestamp -eq $CreationTimestamp) {
+            return $checkpoint
+        }
+        if ($existing[0].image -ne $Image) {
             throw "SparkApplication checkpoint contains conflicting observation for stage '$Stage'."
         }
-        return $checkpoint
+        $existingCreated = [DateTimeOffset]::Parse(
+            [string]$existing[0].creation_timestamp,
+            [System.Globalization.CultureInfo]::InvariantCulture
+        )
+        $candidateCreated = [DateTimeOffset]::Parse(
+            $CreationTimestamp,
+            [System.Globalization.CultureInfo]::InvariantCulture
+        )
+        if ($candidateCreated -le $existingCreated) {
+            return $checkpoint
+        }
+        $checkpoint.observations = @(
+            $checkpoint.observations | Where-Object { $_.stage -ne $Stage }
+        )
     }
     if ($existing.Count -gt 1) {
         throw "SparkApplication checkpoint contains duplicate stage '$Stage'."

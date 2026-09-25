@@ -210,6 +210,20 @@ try {
             -Image "data-master-spark-jobs:git-deadbeef" `
             -CreationTimestamp "2026-07-14T01:00:00+00:00" | Out-Null
     }
+    Save-DataMasterSparkApplicationObservation -Path $checkpointPath `
+        -DagId "banking_data_vault_pipeline" -RunId "minikube-e2e-test" `
+        -Stage "bronze" -Name "run-bronze-retry-12345678" `
+        -Image "data-master-spark-jobs:git-1234567" `
+        -CreationTimestamp "2026-07-14T01:01:00+00:00" | Out-Null
+    $retriedCheckpoint = Read-DataMasterSparkApplicationObservationCheckpoint `
+        -Path $checkpointPath -RequireComplete
+    $bronzeObservation = @($retriedCheckpoint.observations | Where-Object {
+        $_.stage -eq "bronze"
+    })
+    if ($bronzeObservation.Count -ne 1 -or
+        $bronzeObservation[0].name -ne "run-bronze-retry-12345678") {
+        throw "SparkApplication retry did not replace the older stage observation."
+    }
 
     $missingCheckpointStage = Copy-TestEvidence -Value $checkpoint
     $missingCheckpointStage.observations = @(

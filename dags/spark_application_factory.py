@@ -130,11 +130,7 @@ def build_spark_application(
             "sparkVersion": "3.3.1",
             "timeToLiveSeconds": 900,
             "restartPolicy": {
-                "type": "OnFailure",
-                "onFailureRetries": 1,
-                "onFailureRetryInterval": 10,
-                "onSubmissionFailureRetries": 2,
-                "onSubmissionFailureRetryInterval": 20,
+                "type": "Never",
             },
             "sparkConf": {
                 "spark.sql.extensions": (

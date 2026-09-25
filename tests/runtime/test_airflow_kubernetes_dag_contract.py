@@ -44,11 +44,13 @@ class AirflowKubernetesDagContractTests(unittest.TestCase):
         self.assertIn("dag_run.conf.get('source_batch'", self.source)
         self.assertIn("run_id=RUN_ID", self.source)
 
-    def test_spark_application_is_the_only_retry_owner(self):
-        self.assertIn('"retries": 0', self.source)
-        self.assertIn('"onFailureRetries": 1', (
+    def test_airflow_is_the_only_retry_owner(self):
+        self.assertIn('"retries": 1', self.source)
+        factory = (
             REPO_ROOT / "dags" / "spark_application_factory.py"
-        ).read_text(encoding="utf-8"))
+        ).read_text(encoding="utf-8")
+        self.assertIn('"type": "Never"', factory)
+        self.assertNotIn('"onFailureRetries"', factory)
 
     def test_dag_declares_distinct_business_vault_and_gold_variables(self):
         self.assertIn('"BUSINESS_VAULT_PATH"', self.source)
