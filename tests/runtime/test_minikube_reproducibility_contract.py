@@ -419,6 +419,21 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertNotIn('$_.status.sync.status', ready_helper)
         self.assertNotIn('$_.status.health.status', ready_helper)
 
+    def test_airflow_allows_cold_bootstrap_before_liveness_checks(self):
+        deployment = (
+            REPO_ROOT
+            / "infra"
+            / "helm-charts"
+            / "airflow"
+            / "templates"
+            / "deployment.yaml"
+        ).read_text(encoding="utf-8")
+        startup_probe = deployment.index("startupProbe:")
+        liveness_probe = deployment.index("livenessProbe:")
+        self.assertLess(startup_probe, liveness_probe)
+        self.assertIn("failureThreshold: 90", deployment[startup_probe:liveness_probe])
+        self.assertIn("periodSeconds: 5", deployment[startup_probe:liveness_probe])
+
     def test_e2e_observer_handles_optional_spark_labels(self):
         e2e = (SCRIPTS / "Invoke-AirflowEndToEndTest.ps1").read_text(
             encoding="utf-8"
