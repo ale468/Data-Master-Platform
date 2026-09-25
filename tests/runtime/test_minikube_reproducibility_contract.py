@@ -378,8 +378,8 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         for image in (
             "postgres:15",
             "bde2020/hive:2.3.2-postgresql-metastore",
-            "ghcr.io/l33tlamer/minio-backup@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e",
-            "bitnamilegacy/minio-client@sha256:1560800eb0449bd1605e1cd8858227df482b03fd14f4efd51f641f6f77eb788d",
+            "ghcr.io/l33tlamer/minio-backup:RELEASE.2025-04-22T22-12-26Z",
+            "bitnamilegacy/minio-client:2024.1.13-debian-11-r0",
             "quay.io/jupyter/pyspark-notebook:2024-04-01",
             "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
         ):

@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/l33tlamer/minio-backup
-  digest: sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+  tag: RELEASE.2025-04-22T22-12-26Z
   pullPolicy: IfNotPresent
 
 service:
@@ -17,7 +17,7 @@ credentialsSecretName: data-master-minio-secret
 
 clientImage:
   repository: bitnamilegacy/minio-client
-  digest: sha256:1560800eb0449bd1605e1cd8858227df482b03fd14f4efd51f641f6f77eb788d
+  tag: 2024.1.13-debian-11-r0
   pullPolicy: IfNotPresent
 
 # Persistence

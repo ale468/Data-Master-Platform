@@ -22,7 +22,7 @@ spec:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
         - name: minio
-          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - server
