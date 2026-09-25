@@ -176,7 +176,7 @@ def build_spark_application(
                 "cores": 1,
                 "instances": 1,
                 "memory": "1536m",
-                "memoryOverhead": "384m",
+                "memoryOverhead": "768m",
                 "labels": {
                     **labels,
                     "data-master.io/spark-role": "executor",
