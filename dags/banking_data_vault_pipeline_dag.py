@@ -19,9 +19,9 @@ DEFAULT_ARGS = {
     "start_date": datetime(2026, 1, 1),
     "email_on_failure": False,
     "email_on_retry": False,
-    # SparkApplication owns the single execution retry.  A second Airflow
-    # retry would create a concurrent application for the same logical stage.
-    "retries": 0,
+    # Airflow owns the single execution retry. SparkApplication retries are
+    # disabled so two applications cannot process the same stage concurrently.
+    "retries": 1,
     "retry_delay": timedelta(minutes=2),
 }
 
