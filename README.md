@@ -458,6 +458,71 @@ port-forwards. Para abrir as interfaces após a conclusão:
 | MinIO API / Console | `http://localhost:9000` / `http://localhost:9001` |
 | Jupyter | `http://localhost:8888` |
 
+### Caminho de apresentação Jupyter → Spark → Delta/MinIO
+
+Jupyter é uma janela de inspeção opcional e read-only sobre os mesmos
+snapshots Delta sintéticos produzidos pela DAG. Ele não submete a DAG, não
+escreve nas camadas e não participa do critério de sucesso do E2E
+Airflow/Spark. A imagem Jupyter deriva da mesma imagem Spark imutável usada nos
+jobs, acrescentando somente JupyterLab e o notebook de apresentação. O pod
+recebe uma identidade MinIO dedicada à política `readonly`, separada das
+credenciais administrativas dos pipelines.
+
+Depois de uma execução Airflow bem-sucedida no profile isolado, valide o
+caminho antes de abrir a interface:
+
+```powershell
+./scripts/minikube/Invoke-JupyterPresentationValidation.ps1 `
+  -Profile $demoProfile `
+  -EvidencePath build/jupyter-presentation-validation.json
+```
+
+O comando exige, de forma fail-closed:
+
+- pod Jupyter pronto e API autenticada;
+- Spark `3.3.1`, Delta `2.2.0` e credenciais S3A via variáveis do Secret;
+- leitura de `bronze_transacoes`, `raw_hub_transacao` e
+  `gold_transacoes_por_dia` no bucket `lakehouse`;
+- versão Delta estável durante cada inspeção;
+- consulta Gold preparada sem path físico digitado na apresentação;
+- evidência contendo apenas metadados e contagens técnicas.
+
+Com a validação aprovada, inicie os port-forwards e copie o token diretamente
+para a área de transferência, sem imprimi-lo no terminal:
+
+```powershell
+./scripts/minikube/Start-DataMasterPortForwards.ps1 -Profile $demoProfile
+$tokenB64 = kubectl --context $demoProfile get secret `
+  data-master-jupyter-secret -n data-platform `
+  -o jsonpath='{.data.JUPYTER_TOKEN}'
+$token = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($tokenB64))
+$token | Set-Clipboard
+Remove-Variable tokenB64, token
+```
+
+Abra `http://localhost:8888`, cole o token e execute, em ordem, o notebook
+[`data_master_delta_presentation.ipynb`](jobs/presentation/notebooks/data_master_delta_presentation.ipynb).
+O helper
+[`jupyter_delta_path.py`](jobs/presentation/jupyter_delta_path.py) centraliza
+os paths uma vez e registra views temporárias curtas; a demonstração passa a
+usar SQL e agregados sintéticos, não plumbing S3A.
+
+Se a validação falhar, inspecione somente o componente opcional antes de
+alterar o pipeline:
+
+```powershell
+kubectl --context $demoProfile get pods -n data-platform `
+  -l app.kubernetes.io/name=jupyter
+kubectl --context $demoProfile logs deployment/jupyter -n data-platform
+kubectl --context $demoProfile describe deployment/jupyter -n data-platform
+```
+
+Este caminho comprova inspeção local de snapshots sintéticos. Não transforma
+Jupyter em serving produtivo, não valida concorrência ou SLA, não adota Hive
+Metastore como catálogo e não autoriza dados reais. Uma falha do Jupyter deve
+ser tratada separadamente; Airflow, Spark Operator e os gates do pipeline
+continuam sendo a autoridade do E2E.
+
 As credenciais são geradas em Kubernetes Secrets; não use senhas fixas nem
 copie valores para logs ou evidências. O [guia GitOps](infra/README-gitops.md)
 detalha as referências de Secrets e a inspeção dos componentes.

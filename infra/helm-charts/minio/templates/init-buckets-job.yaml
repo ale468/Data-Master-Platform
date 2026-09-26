@@ -27,6 +27,16 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.credentialsSecretName }}
                   key: MINIO_SECRET_KEY
+            - name: JUPYTER_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jupyterCredentialsSecretName }}
+                  key: MINIO_ACCESS_KEY
+            - name: JUPYTER_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jupyterCredentialsSecretName }}
+                  key: MINIO_SECRET_KEY
           command:
             - sh
             - -c
@@ -38,5 +48,10 @@ spec:
               mc mb --ignore-existing local/silver
               mc mb --ignore-existing local/gold
               mc mb --ignore-existing local/warehouse
+              mc admin user add local "$JUPYTER_MINIO_ACCESS_KEY" "$JUPYTER_MINIO_SECRET_KEY"
+              if ! mc admin user info local "$JUPYTER_MINIO_ACCESS_KEY" --json \
+                | grep -q '"policyName":"readonly"'; then
+                mc admin policy attach local readonly --user "$JUPYTER_MINIO_ACCESS_KEY"
+              fi
       serviceAccountName: {{ include "minio.serviceAccountName" . }}
   backoffLimit: 3

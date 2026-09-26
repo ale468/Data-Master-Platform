@@ -4,8 +4,8 @@ fullnameOverride: jupyter
 replicaCount: 1
 
 image:
-  repository: quay.io/jupyter/pyspark-notebook
-  tag: "2024-04-01"
+  repository: data-master-jupyter
+  tag: git-unpublished
   pullPolicy: IfNotPresent
 
 service:
@@ -15,16 +15,25 @@ service:
 
 jupyter:
   secretName: data-master-jupyter-secret
+  minioSecretName: data-master-jupyter-minio-secret
   baseUrl: "/"
 
-# Configurações específicas para Jupyter em Kubernetes
+# Spark local no pod Jupyter: mesma pilha Delta/S3A dos jobs, somente leitura.
 sparkSubmitArgs: >-
+  --master local[2]
+  --driver-memory 1g
+  --conf spark.driver.bindAddress=127.0.0.1
+  --conf spark.driver.host=127.0.0.1
+  --conf spark.ui.enabled=false
+  --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension
+  --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
   --conf spark.hadoop.fs.s3a.endpoint=http://minio.data-platform.svc.cluster.local:9000
   --conf spark.hadoop.fs.s3a.path.style.access=true
   --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false
   --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
-  --conf spark.sql.catalogImplementation=hive
-  --conf spark.hadoop.hive.metastore.uris=thrift://hive-metastore.data-platform.svc.cluster.local:9083
+  --conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.EnvironmentVariableCredentialsProvider
+  --conf spark.sql.shuffle.partitions=4
+  --conf spark.databricks.delta.snapshotPartitions=4
   pyspark-shell
 env:
   - name: JUPYTER_ENABLE_LAB
@@ -33,16 +42,26 @@ env:
     value: "8888"
   - name: JUPYTER_IP
     value: "0.0.0.0"
-  - name: JUPYTER_ALLOW_INSECURE_WRITES
-    value: "true"
+  - name: MINIO_ENDPOINT
+    value: "http://minio.data-platform.svc.cluster.local:9000"
+  - name: LAKEHOUSE_ROOT
+    value: "s3a://lakehouse"
+  - name: JUPYTER_SPARK_MASTER
+    value: "local[2]"
+  - name: SPARK_JARS_PACKAGES
+    value: ""
+  - name: SPARK_LOG_LEVEL
+    value: "WARN"
+  - name: SPARK_USER
+    value: "nobody"
 
 resources:
   requests:
-    memory: "512Mi"
-    cpu: "250m"
-  limits:
     memory: "1Gi"
     cpu: "500m"
+  limits:
+    memory: "3Gi"
+    cpu: "2"
 
 nodeSelector: {}
 

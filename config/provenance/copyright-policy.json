@@ -19,14 +19,20 @@
   ],
   "source_filenames": [
     "Dockerfile.airflow",
+    "Dockerfile.jupyter",
     "Dockerfile.spark"
   ],
   "owned_source_patterns": [
     ".github/workflows/provenance-compliance.yml",
     ".pre-commit-config.yaml",
     "Dockerfile.airflow",
+    "Dockerfile.jupyter",
     "Dockerfile.spark",
+    "jobs/presentation/jupyter_delta_path.py",
+    "jobs/presentation/run_jupyter_delta_validation.py",
+    "scripts/minikube/Invoke-JupyterPresentationValidation.ps1",
     "scripts/validate_provenance.py",
+    "tests/runtime/test_jupyter_presentation_contract.py",
     "tests/runtime/test_provenance_compliance.py"
   ],
   "review_required_patterns": [
@@ -63,6 +69,7 @@
     "Kubernetes Python client",
     "Apache Hadoop AWS",
     "AWS SDK for Java",
+    "JupyterLab",
     "actions/checkout",
     "actions/setup-python",
     "actions/upload-artifact",
