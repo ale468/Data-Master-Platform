@@ -179,6 +179,7 @@ class JupyterPresentationContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("JUPYTER_PRESENTATION_VALIDATION_STATUS=PASS", validator)
         self.assertIn("JUPYTER_AUTHENTICATED_API_STATUS=PASS", validator)
+        self.assertIn('PSObject.Properties["deletionTimestamp"]', validator)
         self.assertIn("technical_aggregate_only", validator)
         self.assertIn('$optionalApplicationNames = @("jupyter-app")', readiness)
         self.assertIn('PSObject.Properties["status"]', readiness)
