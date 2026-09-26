@@ -158,6 +158,61 @@ $withStorage | Add-Member -NotePropertyName storage -NotePropertyValue ([ordered
 })
 Assert-DataMasterExecutionEvidence -Evidence $withStorage | Out-Null
 
+$withMultibatch = Copy-TestEvidence -Value $withStorage
+$withMultibatch | Add-Member -NotePropertyName multibatch -NotePropertyValue ([ordered]@{
+    schema_version = 1
+    scenario_id = "test-scenario"
+    source_batch = "batch-1"
+    batch_id = "test-scenario-b1"
+    run_id = "minikube-e2e-test"
+    batch_counts = [ordered]@{
+        bronze = 399
+        raw_vault_hubs = 240
+        raw_vault_links = 490
+        raw_vault_satellites = 399
+    }
+    source_manifest = [ordered]@{
+        generator_version = "deterministic-multibatch-v1"
+        generated_at = "2026-07-14T01:00:00+00:00"
+        manifest_sha256 = "a" * 64
+        source_counts = [ordered]@{
+            clientes = 10
+            contas = 10
+            transacoes = 100
+            cartoes = 10
+            eventos_digitais = 100
+            agencias = 2
+            produtos = 3
+        }
+    }
+    history = [ordered]@{
+        changed_customer_versions = 1
+        unchanged_customer_versions = 1
+        new_customer_present = $false
+        new_customer_account_present = $false
+        new_customer_relationship_rows = 0
+        existing_customer_new_relationship_rows = 0
+    }
+    late_arrival = [ordered]@{
+        transaction_id = "TRX_LATE_000001"
+        present = $false
+    }
+    gold_rows = 7
+})
+Assert-DataMasterExecutionEvidence -Evidence $withMultibatch | Out-Null
+
+$mismatchedMultibatchRun = Copy-TestEvidence -Value $withMultibatch
+$mismatchedMultibatchRun.multibatch.run_id = "different-run"
+Assert-TestThrows -ExpectedPattern "run_id does not match" -Action {
+    Assert-DataMasterExecutionEvidence -Evidence $mismatchedMultibatchRun | Out-Null
+}
+
+$invalidManifestHash = Copy-TestEvidence -Value $withMultibatch
+$invalidManifestHash.multibatch.source_manifest.manifest_sha256 = "not-a-sha"
+Assert-TestThrows -ExpectedPattern "manifest_sha256" -Action {
+    Assert-DataMasterExecutionEvidence -Evidence $invalidManifestHash | Out-Null
+}
+
 $sameStorageRoot = Copy-TestEvidence -Value $withStorage
 $sameStorageRoot.storage.business_vault_path = "s3a://lakehouse/gold"
 Assert-TestThrows -ExpectedPattern "paths must be distinct" -Action {

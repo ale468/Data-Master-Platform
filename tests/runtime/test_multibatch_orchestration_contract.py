@@ -43,6 +43,33 @@ class MultibatchOrchestrationContractTests(unittest.TestCase):
         self.assertIn('@("--conf", $DagRunConfigJson)', self.airflow_runner)
         self.assertIn('$evidence["multibatch"]', self.airflow_runner)
 
+    def test_multibatch_is_added_after_evidence_object_exists(self):
+        self.assertLess(
+            self.airflow_runner.index("$evidence = [ordered]@{"),
+            self.airflow_runner.index('$evidence["multibatch"] ='),
+        )
+
+    def test_storage_markers_are_retained_in_durable_task_logs(self):
+        self.assertIn("GOLD_STORAGE_PATH_STATUS=PASS", self.airflow_runner)
+        self.assertIn(
+            "BUSINESS_VAULT_GOLD_PATH_SEPARATION_STATUS=PASS",
+            self.airflow_runner,
+        )
+
+    def test_presentation_json_preserves_iso_timestamp_strings(self):
+        self.assertIn(
+            "$presentation = ConvertFrom-DataMasterJson -Json",
+            self.airflow_runner,
+        )
+
+    def test_existing_step_evidence_is_validated_before_reuse(self):
+        self.assertIn("Read-DataMasterExecutionEvidence", self.runner)
+        self.assertIn("Assert-MultibatchStepEvidence", self.runner)
+        self.assertIn(
+            "MULTIBATCH_STEP_EVIDENCE_MODE=REUSED_VALIDATED:$($step.Name)",
+            self.runner,
+        )
+
     def test_dynamic_sources_are_forwarded_as_driver_records(self):
         self.assertIn('generated["records"]', self.stage_runner)
 

@@ -497,7 +497,7 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
 
         self.assertIn('$hasStorageEvidence', e2e)
         self.assertIn('$evidence["storage"]', e2e)
-        self.assertIn('-Optional @("storage")', contract)
+        self.assertIn('-Optional @("storage", "multibatch")', contract)
         self.assertIn("Business Vault and Gold paths must be distinct", contract)
         self.assertIn("REPRODUCIBILITY_GOLD_PATH_CHECK=PASS", gates)
         self.assertIn("NOT_RECORDED_LEGACY_EVIDENCE", gates)
