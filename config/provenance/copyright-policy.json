@@ -30,6 +30,7 @@
     "Dockerfile.spark",
     "jobs/presentation/jupyter_delta_path.py",
     "jobs/presentation/run_jupyter_delta_validation.py",
+    "jobs/presentation/start_jupyter.sh",
     "scripts/minikube/Invoke-JupyterPresentationValidation.ps1",
     "scripts/validate_provenance.py",
     "tests/runtime/test_jupyter_presentation_contract.py",

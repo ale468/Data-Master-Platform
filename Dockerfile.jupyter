@@ -30,4 +30,4 @@ WORKDIR /opt/spark/work-dir/jobs/presentation/notebooks
 
 EXPOSE 8888
 
-CMD ["bash", "-ec", "exec python3 -m jupyterlab --ServerApp.ip=0.0.0.0 --ServerApp.port=${JUPYTER_PORT} --ServerApp.open_browser=False --ServerApp.allow_remote_access=True --ServerApp.root_dir=${JUPYTER_ROOT_DIR} --IdentityProvider.token=\"${JUPYTER_TOKEN:?JUPYTER_TOKEN is required}\""]
+CMD ["/bin/sh", "/opt/spark/work-dir/jobs/presentation/start_jupyter.sh"]
