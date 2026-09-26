@@ -465,8 +465,9 @@ snapshots Delta sintéticos produzidos pela DAG. Ele não submete a DAG, não
 escreve nas camadas e não participa do critério de sucesso do E2E
 Airflow/Spark. A imagem Jupyter deriva da mesma imagem Spark imutável usada nos
 jobs, acrescentando somente JupyterLab e o notebook de apresentação. O pod
-recebe uma identidade MinIO dedicada à política `readonly`, separada das
-credenciais administrativas dos pipelines.
+recebe uma identidade MinIO dedicada à política
+`data-master-jupyter-readonly`, restrita a listar o bucket `lakehouse` e ler
+seus objetos, separada das credenciais administrativas dos pipelines.
 
 Depois de uma execução Airflow bem-sucedida no profile isolado, valide o
 caminho antes de abrir a interface:

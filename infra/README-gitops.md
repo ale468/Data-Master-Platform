@@ -194,9 +194,10 @@ usa essa imagem como base. Assim, Jupyter e os SparkApplications compartilham
 as mesmas versões de Spark, Delta, Hadoop AWS e AWS SDK, enquanto JupyterLab é
 adicionado somente como superfície de apresentação. O container consome o
 token e uma identidade MinIO exclusiva por `secretKeyRef`. O Job de
-inicialização associa essa identidade à política embutida `readonly`; as
-credenciais administrativas usadas pelos pipelines não são montadas no pod
-Jupyter.
+inicialização associa essa identidade à política
+`data-master-jupyter-readonly`, limitada a listar o bucket `lakehouse` e ler
+seus objetos; as credenciais administrativas usadas pelos pipelines não são
+montadas no pod Jupyter.
 
 O notebook canônico está em
 `jobs/presentation/notebooks/data_master_delta_presentation.ipynb`. A leitura
