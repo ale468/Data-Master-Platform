@@ -420,6 +420,8 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertIn("function ConvertTo-DataMasterUtcDateTime", e2e)
         self.assertIn("$Value -is [DateTime]", e2e)
         self.assertIn("$created -ge $observationStart", e2e)
+        self.assertIn("GOLD_STORAGE_PATH_STATUS=PASS|", e2e)
+        self.assertIn("BUSINESS_VAULT_GOLD_PATH_SEPARATION_STATUS=PASS|", e2e)
         self.assertIn('-Labels $_.spec.driver.labels', e2e)
 
     def test_e2e_observer_persists_spark_checkpoint_before_completion(self):
