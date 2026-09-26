@@ -147,6 +147,7 @@ class JupyterPresentationContractTests(unittest.TestCase):
         self.assertIn("git-unpublished", values)
         self.assertNotIn("hive.metastore", values)
         self.assertIn("EnvironmentVariableCredentialsProvider", values)
+        self.assertIn("-XX:-UseContainerSupport -Duser.home=/tmp", values)
         self.assertIn("secretKeyRef", deployment)
         self.assertIn("data-master-jupyter-minio-secret", values)
         self.assertNotIn("name: data-master-minio-secret", deployment)

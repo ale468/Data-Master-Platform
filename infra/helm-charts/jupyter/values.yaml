@@ -54,6 +54,8 @@ env:
     value: "WARN"
   - name: SPARK_USER
     value: "nobody"
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:-UseContainerSupport -Duser.home=/tmp"
 
 resources:
   requests:
