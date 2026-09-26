@@ -40,7 +40,8 @@ class SparkApplicationContractTests(unittest.TestCase):
         self.assertGreaterEqual(spec["executor"]["instances"], 1)
         self.assertEqual(spec["driver"]["memory"], "1g")
         self.assertEqual(spec["executor"]["memory"], "1536m")
-        self.assertEqual(spec["executor"]["memoryOverhead"], "384m")
+        self.assertEqual(spec["executor"]["memoryOverhead"], "768m")
+        self.assertEqual(spec["restartPolicy"], {"type": "Never"})
         self.assertEqual(
             spec["driver"]["labels"]["data-master.io/spark-role"],
             "driver",
@@ -99,6 +100,33 @@ class SparkApplicationContractTests(unittest.TestCase):
             "evidence",
         ):
             self.assertEqual(self._application(stage)["kind"], "SparkApplication")
+
+    def test_multibatch_identifiers_are_propagated_separately(self):
+        application = build_spark_application(
+            stage="bronze",
+            batch_id="scenario-b2",
+            run_id="scenario-b2-replay",
+            scenario_id="scenario",
+            source_batch="batch-2",
+            image="data-master-spark-jobs:git-abcdef0",
+            runtime_profile="presentation-demo",
+            namespace="data-platform",
+            service_account="spark",
+            paths=PATHS,
+            application_name="dm-bronze-replay",
+        )
+        arguments = application["spec"]["arguments"]
+        for flag, expected in (
+            ("--batch-id", "scenario-b2"),
+            ("--run-id", "scenario-b2-replay"),
+            ("--scenario-id", "scenario"),
+            ("--source-batch", "batch-2"),
+        ):
+            self.assertEqual(arguments[arguments.index(flag) + 1], expected)
+        self.assertEqual(
+            application["spec"]["driver"]["labels"]["data-master.io/source-batch"],
+            "batch-2",
+        )
 
     def test_mutable_image_tags_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "Mutable"):

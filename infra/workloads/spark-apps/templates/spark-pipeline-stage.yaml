@@ -34,11 +34,7 @@ spec:
   sparkVersion: "3.3.1"
   timeToLiveSeconds: 900
   restartPolicy:
-    type: OnFailure
-    onFailureRetries: 1
-    onFailureRetryInterval: 10
-    onSubmissionFailureRetries: 2
-    onSubmissionFailureRetryInterval: 20
+    type: Never
   sparkConf:
     spark.sql.extensions: io.delta.sql.DeltaSparkSessionExtension
     spark.sql.catalog.spark_catalog: org.apache.spark.sql.delta.catalog.DeltaCatalog
@@ -95,7 +91,7 @@ spec:
     cores: 1
     instances: 1
     memory: 1536m
-    memoryOverhead: 384m
+    memoryOverhead: 768m
     labels:
       data-master.io/spark-role: executor
     env: *runtime-env

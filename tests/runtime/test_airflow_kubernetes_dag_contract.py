@@ -4,6 +4,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DAG_PATH = REPO_ROOT / "dags" / "banking_data_vault_pipeline_dag.py"
+AIRFLOW_RBAC_PATH = (
+    REPO_ROOT / "infra" / "helm-charts" / "airflow" / "templates" / "rbac.yaml"
+)
 
 
 class AirflowKubernetesDagContractTests(unittest.TestCase):
@@ -38,12 +41,31 @@ class AirflowKubernetesDagContractTests(unittest.TestCase):
         self.assertIn('"data-master.io/runtime-profile"', self.source)
         self.assertIn('"data-master.io/stage": stage', self.source)
 
+    def test_dag_accepts_multibatch_conf_without_adding_tasks(self):
+        self.assertIn("dag_run.conf.get('batch_id'", self.source)
+        self.assertIn("dag_run.conf.get('scenario_id'", self.source)
+        self.assertIn("dag_run.conf.get('source_batch'", self.source)
+        self.assertIn("run_id=RUN_ID", self.source)
+
+    def test_airflow_is_the_only_retry_owner(self):
+        self.assertIn('"retries": 1', self.source)
+        factory = (
+            REPO_ROOT / "dags" / "spark_application_factory.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('"type": "Never"', factory)
+        self.assertNotIn('"onFailureRetries"', factory)
+
     def test_dag_declares_distinct_business_vault_and_gold_variables(self):
         self.assertIn('"BUSINESS_VAULT_PATH"', self.source)
         self.assertIn('"s3a://lakehouse/business_vault"', self.source)
         self.assertIn('"GOLD_PATH"', self.source)
         self.assertIn('"s3a://lakehouse/gold"', self.source)
         self.assertNotIn("Business Vault/Gold", self.source)
+
+    def test_airflow_can_patch_driver_pods_during_operator_cleanup(self):
+        rbac = AIRFLOW_RBAC_PATH.read_text(encoding="utf-8")
+        self.assertIn('resources: ["pods"]', rbac)
+        self.assertIn('verbs: ["get", "list", "watch", "patch"]', rbac)
 
 
 if __name__ == "__main__":

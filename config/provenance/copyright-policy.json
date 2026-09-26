@@ -26,7 +26,13 @@
     ".pre-commit-config.yaml",
     "Dockerfile.airflow",
     "Dockerfile.spark",
+    "jobs/data_generation/multibatch_lifecycle.py",
+    "scripts/minikube/Invoke-DataMasterMultibatchValidation.ps1",
     "scripts/validate_provenance.py",
+    "tests/data_vault/test_multibatch_lifecycle.py",
+    "tests/runtime/test_committed_multibatch_evidence.py",
+    "tests/runtime/test_multibatch_generator.py",
+    "tests/runtime/test_multibatch_orchestration_contract.py",
     "tests/runtime/test_provenance_compliance.py"
   ],
   "review_required_patterns": [

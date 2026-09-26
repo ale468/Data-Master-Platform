@@ -153,7 +153,14 @@ def validate_hubs(
         df = hubs[name]
         hash_key = str(spec["hash_key"])
         business_keys = list(spec["business_keys"])
-        required = [hash_key, *business_keys, "load_datetime", "record_source", "batch_id"]
+        required = [
+            hash_key,
+            *business_keys,
+            "load_datetime",
+            "record_source",
+            "batch_id",
+            "run_id",
+        ]
         missing = _required_columns_failure(df, required, f"hub.{name}")
         failures.extend(missing)
         if missing:
@@ -183,7 +190,14 @@ def validate_links(
             continue
         df = links[name]
         role_columns = list(references.keys())
-        required = ["hk_link", *role_columns, "load_datetime", "record_source", "batch_id"]
+        required = [
+            "hk_link",
+            *role_columns,
+            "load_datetime",
+            "record_source",
+            "batch_id",
+            "run_id",
+        ]
         missing = _required_columns_failure(df, required, f"link.{name}")
         failures.extend(missing)
         if missing:
@@ -239,6 +253,7 @@ def validate_satellites(
             "record_source",
             "effective_from",
             "batch_id",
+            "run_id",
         ]
         missing = _required_columns_failure(df, required, f"satellite.{name}")
         failures.extend(missing)
@@ -286,7 +301,7 @@ def validate_lineage(
 ) -> List[str]:
     failures: List[str] = []
     for name, df in frames:
-        required = {"load_datetime", "record_source", "batch_id"}
+        required = {"load_datetime", "record_source", "batch_id", "run_id"}
         missing = sorted(required - set(df.columns))
         if missing:
             failures.append(f"lineage.{name}.missing:{','.join(missing)}")
@@ -294,6 +309,7 @@ def validate_lineage(
         invalid = df.filter(
             _is_blank("record_source")
             | _is_blank("batch_id")
+            | _is_blank("run_id")
             | F.col("load_datetime").isNull()
             | ~F.col("record_source").rlike(r"^[^:]+:[^:]+$")
         ).limit(1).count()

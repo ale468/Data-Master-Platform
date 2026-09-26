@@ -226,7 +226,7 @@ def load_satellite(
     df_sat = add_raw_vault_record_source(df_sat) \
         .withColumn("load_datetime", F.current_timestamp()) \
         .withColumn("effective_from", F.current_timestamp()) \
-        .select(hash_key, hashdiff, *attributes, "load_datetime", "record_source", "effective_from", "batch_id")
+        .select(hash_key, hashdiff, *attributes, "load_datetime", "record_source", "effective_from", "batch_id", "run_id")
 
     path = Config.get_satellite_table_config(sat_name)["path"]
     existing_df = DeltaIO.read_delta(spark, path)
@@ -256,12 +256,15 @@ def run_satellites_pipeline(
     spark: SparkSession,
     bronze_path: str,
     batch_id: str,
+    run_id: str = None,
 ) -> Dict[str, Any]:
     logger.info("=" * 80)
     logger.info("INICIANDO PIPELINE DE SATELLITES")
     logger.info("=" * 80)
 
-    metrics = ExecutionMetrics("raw_vault_pipeline", "load_satellites", batch_id=batch_id)
+    metrics = ExecutionMetrics(
+        "raw_vault_pipeline", "load_satellites", batch_id=batch_id, run_id=run_id
+    )
     results: Dict[str, Dict[str, Any]] = {}
 
     try:
@@ -286,11 +289,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Pipeline de Satellites - Data Vault 2.0")
     parser.add_argument("--bronze-path", type=str, default=Config.BRONZE_PATH)
     parser.add_argument("--batch-id", type=str, default=None)
+    parser.add_argument("--run-id", type=str, default=None)
     args = parser.parse_args()
 
     spark = create_spark_session()
     batch_id = args.batch_id or MonitoringLogger.get_batch_id()
-    result = run_satellites_pipeline(spark, args.bronze_path, batch_id)
+    result = run_satellites_pipeline(
+        spark, args.bronze_path, batch_id, args.run_id
+    )
     return 0 if result["status"] == "SUCCESS" else 1
 
 

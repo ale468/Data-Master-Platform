@@ -82,6 +82,7 @@ def descriptive_columns(
         "record_source",
         "effective_from",
         "batch_id",
+        "run_id",
     }
     return [
         column
@@ -104,7 +105,7 @@ def hub_with_latest_satellites(
     hub_columns = [
         column
         for column in result.columns
-        if column not in {"load_datetime", "record_source", "batch_id"}
+        if column not in {"load_datetime", "record_source", "batch_id", "run_id"}
     ]
     result = result.select(*hub_columns)
 

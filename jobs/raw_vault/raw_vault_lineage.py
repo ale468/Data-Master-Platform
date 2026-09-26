@@ -10,6 +10,7 @@ BRONZE_LINEAGE_COLUMNS: Tuple[str, ...] = (
     "source_system",
     "source_entity",
     "batch_id",
+    "run_id",
 )
 
 

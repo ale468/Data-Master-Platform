@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "data_master_deterministic_multibatch_validation",
+  "scenario_id": "issue10-20260925T193501",
+  "profile": "data-master-multibatch-20260924T210426",
+  "captured_at": "2026-09-26T12:28:05.5955936+00:00",
+  "status": "PASS",
+  "sequence": [
+    "batch-1",
+    "batch-2",
+    "batch-2-replay",
+    "batch-3"
+  ],
+  "commits": [
+    {
+      "sha": "bbd4453",
+      "purpose": "runtime image captured by E2E"
+    }
+  ],
+  "images": [
+    {
+      "role": "airflow_orchestrator",
+      "reference": "data-master-airflow:git-bbd4453",
+      "image_id": "sha256:894bd6172c1b527182bf503171bcc979af0e7b641cbb20b9887b81ac76a75a41"
+    },
+    {
+      "role": "spark_jobs_bbd4453",
+      "reference": "data-master-spark-jobs:git-bbd4453",
+      "image_id": "sha256:ee63e2879ab3fc59fca251eb3fabfb4d196bfb68a40ba76cdbf33512e4a0bf32"
+    }
+  ],
+  "runs": [
+    {
+      "name": "batch_1",
+      "source_batch": "batch-1",
+      "batch_id": "issue10-20260925T193501-b1",
+      "run_id": "issue10-20260925T193501-b1",
+      "manifest_sha256": "2e65df9e1ce24c3a965eae6718aa064c58156dfeee4f85e8d83a3da66ec1cb2b",
+      "generated_at": "2026-01-01T00:00:00Z",
+      "aggregate_counts": {
+        "bronze": 3456,
+        "raw_vault_hubs": 1461,
+        "raw_vault_links": 2399,
+        "raw_vault_satellites": 3556,
+        "gold": 1324
+      },
+      "batch_counts": {
+        "bronze": 3456,
+        "raw_vault_hubs": 1461,
+        "raw_vault_links": 2399,
+        "raw_vault_satellites": 3556
+      },
+      "history": {
+        "changed_customer_versions": 1,
+        "existing_customer_new_relationship_rows": 0,
+        "new_customer_account_present": false,
+        "new_customer_present": false,
+        "new_customer_relationship_rows": 0,
+        "unchanged_customer_versions": 1
+      },
+      "late_arrival": {
+        "present": false,
+        "transaction_id": "TXN_MB_LATE_000000001"
+      }
+    },
+    {
+      "name": "batch_2",
+      "source_batch": "batch-2",
+      "batch_id": "issue10-20260925T193501-b2",
+      "run_id": "issue10-20260925T193501-b2",
+      "manifest_sha256": "dcb01ec20dda5828ed545426f33f3de18c917f896eaf9a33cf81beccb065973f",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "aggregate_counts": {
+        "bronze": 3917,
+        "raw_vault_hubs": 1465,
+        "raw_vault_links": 2407,
+        "raw_vault_satellites": 3563,
+        "gold": 1328
+      },
+      "batch_counts": {
+        "bronze": 461,
+        "raw_vault_hubs": 4,
+        "raw_vault_links": 8,
+        "raw_vault_satellites": 7
+      },
+      "history": {
+        "changed_customer_versions": 2,
+        "existing_customer_new_relationship_rows": 1,
+        "new_customer_account_present": true,
+        "new_customer_present": true,
+        "new_customer_relationship_rows": 1,
+        "unchanged_customer_versions": 1
+      },
+      "late_arrival": {
+        "present": false,
+        "transaction_id": "TXN_MB_LATE_000000001"
+      }
+    },
+    {
+      "name": "batch_2_replay",
+      "source_batch": "batch-2",
+      "batch_id": "issue10-20260925T193501-b2",
+      "run_id": "issue10-20260925T193501-b2-replay",
+      "manifest_sha256": "dcb01ec20dda5828ed545426f33f3de18c917f896eaf9a33cf81beccb065973f",
+      "generated_at": "2026-01-03T00:00:00Z",
+      "aggregate_counts": {
+        "bronze": 3917,
+        "raw_vault_hubs": 1465,
+        "raw_vault_links": 2407,
+        "raw_vault_satellites": 3563,
+        "gold": 1328
+      },
+      "batch_counts": {
+        "bronze": 461,
+        "raw_vault_hubs": 4,
+        "raw_vault_links": 8,
+        "raw_vault_satellites": 7
+      },
+      "history": {
+        "changed_customer_versions": 2,
+        "existing_customer_new_relationship_rows": 1,
+        "new_customer_account_present": true,
+        "new_customer_present": true,
+        "new_customer_relationship_rows": 1,
+        "unchanged_customer_versions": 1
+      },
+      "late_arrival": {
+        "present": false,
+        "transaction_id": "TXN_MB_LATE_000000001"
+      }
+    },
+    {
+      "name": "batch_3",
+      "source_batch": "batch-3",
+      "batch_id": "issue10-20260925T193501-b3",
+      "run_id": "issue10-20260925T193501-b3",
+      "manifest_sha256": "e7a0e6ff390d9196000b8bdc1354be00da1b3e883f97e0eeb005648e21f13db6",
+      "generated_at": "2026-01-05T00:00:00Z",
+      "aggregate_counts": {
+        "bronze": 4378,
+        "raw_vault_hubs": 1466,
+        "raw_vault_links": 2408,
+        "raw_vault_satellites": 3565,
+        "gold": 1329
+      },
+      "batch_counts": {
+        "bronze": 461,
+        "raw_vault_hubs": 1,
+        "raw_vault_links": 1,
+        "raw_vault_satellites": 2
+      },
+      "history": {
+        "changed_customer_versions": 2,
+        "existing_customer_new_relationship_rows": 1,
+        "new_customer_account_present": true,
+        "new_customer_present": true,
+        "new_customer_relationship_rows": 1,
+        "unchanged_customer_versions": 1
+      },
+      "late_arrival": {
+        "batch_id": "issue10-20260925t193501-b3",
+        "event_timestamp": "2026-01-02 00:00:00",
+        "load_timestamp": "2026-09-26 06:58:42.053253",
+        "present": true,
+        "run_id": "issue10-20260925T193501-b3",
+        "transaction_id": "TXN_MB_LATE_000000001"
+      }
+    }
+  ],
+  "assertions": {
+    "deterministic_replay_manifest": true,
+    "replay_layer_deltas": {
+      "bronze": 0,
+      "raw_vault_hubs": 0,
+      "raw_vault_links": 0,
+      "raw_vault_satellites": 0
+    },
+    "changed_customer_versions_after_batch_2": 2,
+    "unchanged_customer_versions": 1,
+    "new_entity_and_relationships": "PASS",
+    "late_arrival_event_before_batch_2_generation": true,
+    "late_arrival_loaded_after_batch_2_generation": true,
+    "gold_rebuilt_after_each_run": true
+  },
+  "privacy": {
+    "classification": "technical_aggregate_only",
+    "contains_pii": false,
+    "contains_secrets": false,
+    "contains_business_payload": false
+  },
+  "limitations": [
+    "synthetic-local-only",
+    "not-streaming",
+    "not-production-sla",
+    "not-high-volume-benchmark",
+    "late-arrival-is-an-immutable-new-transaction"
+  ]
+}
