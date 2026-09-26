@@ -125,6 +125,8 @@ function Get-AirflowTechnicalTaskLog {
     $pattern = (
         "job_id:|SPARK_STAGE_RESULT=|PRESENTATION_EVIDENCE=|" +
         "PRESENTATION_EVIDENCE_STATUS=|DATA_VAULT_[A-Z_]+=PASS|" +
+        "GOLD_STORAGE_PATH_STATUS=PASS|" +
+        "BUSINESS_VAULT_GOLD_PATH_SEPARATION_STATUS=PASS|" +
         "MASKING_STATUS=PASS|GOLD_PII_EXPOSURE_STATUS=PASS|" +
         "Task exited with return code|exit code 137"
     )
