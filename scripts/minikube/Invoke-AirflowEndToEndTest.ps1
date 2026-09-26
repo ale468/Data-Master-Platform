@@ -706,7 +706,7 @@ try {
             (Get-DataMasterLabelValue `
                 -Labels $_.spec.driver.labels `
                 -Name "data-master.io/runtime-profile") -eq "presentation-demo" -and
-                $created.UtcDateTime -ge $observationStart
+            $created -ge $observationStart
         } | Sort-Object { $_.metadata.creationTimestamp })
         foreach ($application in $matchingApplications) {
             $stage = Get-DataMasterLabelValue `
