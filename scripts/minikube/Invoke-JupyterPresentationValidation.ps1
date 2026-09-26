@@ -42,9 +42,14 @@ $podJson = Invoke-DataMasterNative -FilePath "kubectl" -CaptureOutput -Arguments
     "get", "pods", "-n", "data-platform",
     "-l", "app.kubernetes.io/name=jupyter", "-o", "json"
 )
-$pods = @(($podJson -join "") | ConvertFrom-Json | Select-Object -ExpandProperty items)
+$pods = @(
+    (($podJson -join "") | ConvertFrom-Json | Select-Object -ExpandProperty items) |
+        Where-Object {
+            $null -eq $_.metadata.PSObject.Properties["deletionTimestamp"]
+        }
+)
 if ($pods.Count -ne 1) {
-    throw "Expected exactly one Jupyter pod; observed $($pods.Count)."
+    throw "Expected exactly one active Jupyter pod; observed $($pods.Count)."
 }
 $pod = $pods[0]
 $readyCondition = @($pod.status.conditions | Where-Object {
