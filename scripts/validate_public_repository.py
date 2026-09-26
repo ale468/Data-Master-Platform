@@ -39,6 +39,7 @@ ALLOWED_ROOT_FILES = {
     "CONTRIBUTING.md",
     "COPYRIGHT",
     "Dockerfile.airflow",
+    "Dockerfile.jupyter",
     "Dockerfile.spark",
     "GOVERNANCE.md",
     "LICENSE",
@@ -47,6 +48,7 @@ ALLOWED_ROOT_FILES = {
     "README.md",
     "SECURITY.md",
     "requirements-spark.txt",
+    "requirements-jupyter.txt",
     "requirements.txt",
 }
 

@@ -11,6 +11,12 @@ spec:
     repoURL: {{ .Values.git.repoUrl | quote }}
     targetRevision: {{ .Values.git.revision | quote }}
     path: infra/helm-charts/jupyter
+    helm:
+      parameters:
+        - name: image.repository
+          value: {{ .Values.images.jupyter.repository | quote }}
+        - name: image.tag
+          value: {{ .Values.images.jupyter.tag | quote }}
   destination:
     server: https://kubernetes.default.svc
     namespace: data-platform

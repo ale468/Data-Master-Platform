@@ -1,0 +1,33 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
+ARG SPARK_BASE_IMAGE=data-master-spark-jobs:build-required
+FROM ${SPARK_BASE_IMAGE}
+
+USER root
+
+COPY requirements-jupyter.txt /opt/spark/work-dir/requirements-jupyter.txt
+RUN pip install --no-cache-dir -r /opt/spark/work-dir/requirements-jupyter.txt
+
+ENV PYTHONPATH=/opt/spark/work-dir \
+    JUPYTER_IMAGE_ROLE=PRESENTATION_READ_ONLY \
+    JUPYTER_PORT=8888 \
+    JUPYTER_ROOT_DIR=/opt/spark/work-dir/jobs/presentation/notebooks \
+    HOME=/tmp \
+    JUPYTER_CONFIG_DIR=/tmp/.jupyter \
+    JUPYTER_DATA_DIR=/tmp/.local/share/jupyter \
+    JUPYTER_RUNTIME_DIR=/tmp/jupyter-runtime \
+    SPARK_USER=nobody
+
+LABEL org.opencontainers.image.title="Data Master Jupyter" \
+      org.opencontainers.image.description="Read-only presentation runtime over the Data Master Spark and Delta image" \
+      org.opencontainers.image.source="https://github.com/ale468/Data-Master-Platform" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      io.data-master.image-role="presentation-read-only"
+
+USER 65534:65534
+WORKDIR /opt/spark/work-dir/jobs/presentation/notebooks
+
+EXPOSE 8888
+
+CMD ["bash", "-ec", "exec python3 -m jupyterlab --ServerApp.ip=0.0.0.0 --ServerApp.port=${JUPYTER_PORT} --ServerApp.open_browser=False --ServerApp.allow_remote_access=True --ServerApp.root_dir=${JUPYTER_ROOT_DIR} --IdentityProvider.token=\"${JUPYTER_TOKEN:?JUPYTER_TOKEN is required}\""]

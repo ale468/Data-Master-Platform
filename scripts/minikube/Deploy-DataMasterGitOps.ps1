@@ -12,7 +12,9 @@ param(
 
     [string]$AirflowImageRepository = "data-master-airflow",
 
-    [string]$SparkImageRepository = "data-master-spark-jobs"
+    [string]$SparkImageRepository = "data-master-spark-jobs",
+
+    [string]$JupyterImageRepository = "data-master-jupyter"
 )
 
 Set-StrictMode -Version Latest
@@ -40,6 +42,7 @@ $replacements = [ordered]@{
     "__GIT_REVISION__" = $Revision
     "__AIRFLOW_IMAGE_REPOSITORY__" = $AirflowImageRepository
     "__SPARK_IMAGE_REPOSITORY__" = $SparkImageRepository
+    "__JUPYTER_IMAGE_REPOSITORY__" = $JupyterImageRepository
     "__IMAGE_TAG__" = $ImageTag
 }
 foreach ($token in $replacements.Keys) {

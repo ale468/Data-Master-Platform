@@ -143,6 +143,8 @@ efêmero e os grava como Kubernetes Secrets:
 
 - `DATA_MASTER_MINIO_ACCESS_KEY`;
 - `DATA_MASTER_MINIO_SECRET_KEY`;
+- `DATA_MASTER_JUPYTER_MINIO_ACCESS_KEY`;
+- `DATA_MASTER_JUPYTER_MINIO_SECRET_KEY`;
 - `DATA_MASTER_POSTGRES_PASSWORD`;
 - `DATA_MASTER_AIRFLOW_PASSWORD`;
 - `DATA_MASTER_JUPYTER_TOKEN`.
@@ -166,6 +168,41 @@ Endpoints:
 | MinIO API | `http://localhost:9000` |
 | MinIO Console | `http://localhost:9001` |
 | Jupyter | `http://localhost:8888` |
+
+## Validação isolada do Jupyter de apresentação
+
+O readiness geral exige os componentes do caminho crítico, mas trata a
+Application `jupyter-app` como opcional. Isso evita que uma falha da interface
+interativa invalide uma DAG Airflow/Spark já comprovada. A validação do Jupyter
+é deliberadamente executada depois do E2E:
+
+```powershell
+./scripts/minikube/Invoke-JupyterPresentationValidation.ps1 `
+  -Profile $profile `
+  -EvidencePath build/jupyter-presentation-validation.json
+```
+
+O validador confirma o pod e a API autenticada, carrega três snapshots Delta
+do MinIO com Spark local no próprio pod, registra as views
+`bronze_transacoes`, `raw_hub_transacao` e `gold_transacoes_por_dia`, executa a
+consulta Gold preparada e rejeita qualquer mudança de versão durante a
+inspeção. O JSON resultante contém imagem, versões, contagens e status; não
+contém token, credenciais, linhas de negócio ou paths locais.
+
+A imagem `data-master-jupyter:git-<sha>` é construída depois da imagem Spark e
+usa essa imagem como base. Assim, Jupyter e os SparkApplications compartilham
+as mesmas versões de Spark, Delta, Hadoop AWS e AWS SDK, enquanto JupyterLab é
+adicionado somente como superfície de apresentação. O container consome o
+token e uma identidade MinIO exclusiva por `secretKeyRef`. O Job de
+inicialização associa essa identidade à política embutida `readonly`; as
+credenciais administrativas usadas pelos pipelines não são montadas no pod
+Jupyter.
+
+O notebook canônico está em
+`jobs/presentation/notebooks/data_master_delta_presentation.ipynb`. A leitura
+é feita por path S3A centralizado no helper, e as células de apresentação usam
+views temporárias. Esta entrega não depende do Hive Metastore e não cria um
+segundo catálogo lógico.
 
 Pare os processos de port-forward quando terminar:
 

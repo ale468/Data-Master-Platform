@@ -254,3 +254,78 @@ jobs:
               )
           print("AIRFLOW_DAG_IMPORT_STATUS=SUCCESS")
           '
+
+  jupyter-quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build Spark and Jupyter images without publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            --file Dockerfile.spark \
+            --tag data-master-spark:quality-gates \
+            .
+          docker build \
+            --file Dockerfile.jupyter \
+            --build-arg SPARK_BASE_IMAGE=data-master-spark:quality-gates \
+            --tag data-master-jupyter:quality-gates \
+            .
+
+      - name: Validate immutable Jupyter presentation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --entrypoint bash \
+            data-master-jupyter:quality-gates \
+            -ec '
+              test "$JUPYTER_IMAGE_ROLE" = PRESENTATION_READ_ONLY
+              test -f /opt/spark/work-dir/jobs/presentation/notebooks/data_master_delta_presentation.ipynb
+              python3 -c "import delta, jupyterlab, pyspark"
+              python3 -c "import json; json.load(open(\"/opt/spark/work-dir/jobs/presentation/notebooks/data_master_delta_presentation.ipynb\", encoding=\"utf-8\"))"
+              printf "%s\n" JUPYTER_IMAGE_CONTRACT_STATUS=SUCCESS
+            '
+
+      - name: Prove local Delta read compatibility from the Jupyter image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --user 65534:65534 \
+            --entrypoint python3 \
+            --env PYTHONDONTWRITEBYTECODE=1 \
+            --env SPARK_LOCAL_IP=127.0.0.1 \
+            --env SPARK_USER=nobody \
+            --env "JAVA_TOOL_OPTIONS=-XX:-UseContainerSupport -Duser.home=/tmp" \
+            --env SPARK_IVY_DIR=/tmp/.ivy2 \
+            --env SPARK_JARS_PACKAGES= \
+            --workdir /tmp \
+            data-master-jupyter:quality-gates \
+            -B -c '
+          from pyspark.sql import SparkSession
+
+          spark = (
+              SparkSession.builder
+              .master("local[2]")
+              .appName("jupyter-delta-local-smoke")
+              .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+              .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+              .config("spark.sql.shuffle.partitions", "4")
+              .config("spark.databricks.delta.snapshotPartitions", "4")
+              .config("spark.ui.enabled", "false")
+              .getOrCreate()
+          )
+          path = "file:///tmp/jupyter-delta-smoke"
+          spark.range(3).write.format("delta").mode("overwrite").save(path)
+          assert spark.read.format("delta").load(path).count() == 3
+          spark.stop()
+          print("JUPYTER_DELTA_LOCAL_SMOKE_STATUS=SUCCESS")
+          '

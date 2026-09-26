@@ -58,6 +58,7 @@ materials.
 - Kubernetes Python client 29.0.0 — Apache-2.0
 - Apache Hadoop AWS 3.3.2 — Apache-2.0
 - AWS SDK for Java bundle 1.11.1026 — Apache-2.0
+- JupyterLab 4.2.5 — BSD-3-Clause
 - Helm and the apache/spark-py and apache/airflow container images — their
   upstream distributions, component notices and license terms apply
 - actions/checkout, actions/setup-python, actions/upload-artifact and

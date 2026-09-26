@@ -56,15 +56,18 @@ try {
     }
     $expectedChildren = @($childRender | Select-String -Pattern "^kind: Application$").Count
     $expectedApplications = $expectedChildren + 1
+    $optionalApplicationNames = @("jupyter-app")
 
-    Wait-DataMasterCondition -Description "$expectedApplications Argo CD Applications synced and healthy" -Deadline $deadline -Condition {
+    Wait-DataMasterCondition -Description "$expectedApplications Argo CD Applications present and required applications synced and healthy" -Deadline $deadline -Condition {
         $jsonText = (& kubectl get applications.argoproj.io -n argocd -o json 2>$null) -join ""
         if (-not $jsonText) { return $false }
         $applications = ($jsonText | ConvertFrom-Json).items
         if (@($applications).Count -ne $expectedApplications) { return $false }
         $notReady = @($applications | Where-Object {
-            ($_.status.sync.status -ne "Synced") -or
-            ($_.status.health.status -ne "Healthy")
+            ($_.metadata.name -notin $optionalApplicationNames) -and (
+                ($_.status.sync.status -ne "Synced") -or
+                ($_.status.health.status -ne "Healthy")
+            )
         })
         return $notReady.Count -eq 0
     }
@@ -115,9 +118,27 @@ try {
         }
     }
 
+    $applicationJson = (& kubectl get applications.argoproj.io -n argocd -o json) -join ""
+    $applicationItems = @((ConvertFrom-Json $applicationJson).items)
+    $healthyApplications = @($applicationItems | Where-Object {
+        $_.status.health.status -eq "Healthy"
+    }).Count
+    $syncedApplications = @($applicationItems | Where-Object {
+        $_.status.sync.status -eq "Synced"
+    }).Count
+    $jupyterApplication = @($applicationItems | Where-Object {
+        $_.metadata.name -eq "jupyter-app"
+    })
+    $jupyterApplicationStatus = if (
+        $jupyterApplication.Count -eq 1 -and
+        $jupyterApplication[0].status.sync.status -eq "Synced" -and
+        $jupyterApplication[0].status.health.status -eq "Healthy"
+    ) { "READY" } else { "OPTIONAL_NOT_READY" }
+
     Write-Output "EXPECTED_APPLICATIONS=$expectedApplications"
-    Write-Output "HEALTHY_APPLICATIONS=$expectedApplications"
-    Write-Output "SYNCED_APPLICATIONS=$expectedApplications"
+    Write-Output "HEALTHY_APPLICATIONS=$healthyApplications"
+    Write-Output "SYNCED_APPLICATIONS=$syncedApplications"
+    Write-Output "JUPYTER_APPLICATION_STATUS=$jupyterApplicationStatus"
     Write-Output "ARGOCD_APPLICATIONS_STATUS=PASS"
     Write-Output "SPARK_OPERATOR_STATUS=PASS"
     Write-Output "SPARK_CRDS_STATUS=PASS"

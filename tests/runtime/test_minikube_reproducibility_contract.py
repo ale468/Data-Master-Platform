@@ -36,6 +36,7 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             "Invoke-SparkIntegrationTest.ps1",
             "Invoke-AirflowEndToEndTest.ps1",
             "Invoke-DataMasterQualityGates.ps1",
+            "Invoke-JupyterPresentationValidation.ps1",
             "Test-DataMasterExecutionEvidence.ps1",
             "Start-DataMasterPortForwards.ps1",
             "Stop-DataMasterPortForwards.ps1",
@@ -378,12 +379,13 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         for image in (
             "postgres:15",
             "bde2020/hive:2.3.2-postgresql-metastore",
-            "minio/minio:RELEASE.2024-01-28T22-35-53Z",
-            "minio/mc:RELEASE.2024-01-13T08-44-48Z",
-            "quay.io/jupyter/pyspark-notebook:2024-04-01",
+            "ghcr.io/l33tlamer/minio-backup:RELEASE.2025-04-22T22-12-26Z",
+            "bitnamilegacy/minio-client:2024.1.13-debian-11-r0",
             "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
         ):
             self.assertIn(image, importer)
+        self.assertIn('"${JupyterRepository}:$Tag"', importer)
+        self.assertNotIn("quay.io/jupyter/pyspark-notebook", importer)
         self.assertIn("MINIKUBE_RUNTIME_DEPENDENCY_IMPORT_STATUS=PASS", importer)
         self.assertIn("docker images --quiet $image", importer)
         self.assertIn("Import-DataMasterDockerImageStream", importer)

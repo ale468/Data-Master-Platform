@@ -9,3 +9,6 @@ images:
   spark:
     repository: data-master-spark-jobs
     tag: git-unpublished
+  jupyter:
+    repository: data-master-jupyter
+    tag: git-unpublished
