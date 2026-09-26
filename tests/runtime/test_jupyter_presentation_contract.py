@@ -123,6 +123,9 @@ class JupyterPresentationContractTests(unittest.TestCase):
             / "root"
             / "app-of-apps.yaml"
         ).read_text(encoding="utf-8")
+        launcher = (
+            REPO_ROOT / "jobs" / "presentation" / "start_jupyter.sh"
+        ).read_text(encoding="utf-8")
         minio_values = (
             REPO_ROOT / "infra" / "helm-charts" / "minio" / "values.yaml"
         ).read_text(encoding="utf-8")
@@ -142,7 +145,10 @@ class JupyterPresentationContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("ARG SPARK_BASE_IMAGE=", dockerfile)
         self.assertIn("PRESENTATION_READ_ONLY", dockerfile)
-        self.assertIn("IdentityProvider.token", dockerfile)
+        self.assertIn("start_jupyter.sh", dockerfile)
+        self.assertIn("c.IdentityProvider.token", launcher)
+        self.assertIn("unset JUPYTER_TOKEN", launcher)
+        self.assertNotIn("--IdentityProvider.token", dockerfile)
         self.assertIn("repository: data-master-jupyter", values)
         self.assertIn("git-unpublished", values)
         self.assertNotIn("hive.metastore", values)
