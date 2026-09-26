@@ -64,9 +64,20 @@ try {
         $applications = ($jsonText | ConvertFrom-Json).items
         if (@($applications).Count -ne $expectedApplications) { return $false }
         $notReady = @($applications | Where-Object {
-            ($_.metadata.name -notin $optionalApplicationNames) -and (
-                ($_.status.sync.status -ne "Synced") -or
-                ($_.status.health.status -ne "Healthy")
+            $applicationName = [string]$_.metadata.name
+            if ($applicationName -in $optionalApplicationNames) {
+                return $false
+            }
+            $statusProperty = $_.PSObject.Properties["status"]
+            if ($null -eq $statusProperty) { return $true }
+            $syncProperty = $statusProperty.Value.PSObject.Properties["sync"]
+            $healthProperty = $statusProperty.Value.PSObject.Properties["health"]
+            if ($null -eq $syncProperty -or $null -eq $healthProperty) {
+                return $true
+            }
+            return (
+                ($syncProperty.Value.status -ne "Synced") -or
+                ($healthProperty.Value.status -ne "Healthy")
             )
         })
         return $notReady.Count -eq 0
@@ -129,11 +140,22 @@ try {
     $jupyterApplication = @($applicationItems | Where-Object {
         $_.metadata.name -eq "jupyter-app"
     })
-    $jupyterApplicationStatus = if (
-        $jupyterApplication.Count -eq 1 -and
-        $jupyterApplication[0].status.sync.status -eq "Synced" -and
-        $jupyterApplication[0].status.health.status -eq "Healthy"
-    ) { "READY" } else { "OPTIONAL_NOT_READY" }
+    $jupyterApplicationStatus = "OPTIONAL_NOT_READY"
+    if ($jupyterApplication.Count -eq 1) {
+        $jupyterStatus = $jupyterApplication[0].PSObject.Properties["status"]
+        if ($null -ne $jupyterStatus) {
+            $jupyterSync = $jupyterStatus.Value.PSObject.Properties["sync"]
+            $jupyterHealth = $jupyterStatus.Value.PSObject.Properties["health"]
+            if (
+                $null -ne $jupyterSync -and
+                $null -ne $jupyterHealth -and
+                $jupyterSync.Value.status -eq "Synced" -and
+                $jupyterHealth.Value.status -eq "Healthy"
+            ) {
+                $jupyterApplicationStatus = "READY"
+            }
+        }
+    }
 
     Write-Output "EXPECTED_APPLICATIONS=$expectedApplications"
     Write-Output "HEALTHY_APPLICATIONS=$healthyApplications"

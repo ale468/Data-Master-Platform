@@ -180,6 +180,7 @@ class JupyterPresentationContractTests(unittest.TestCase):
         self.assertIn("JUPYTER_AUTHENTICATED_API_STATUS=PASS", validator)
         self.assertIn("technical_aggregate_only", validator)
         self.assertIn('$optionalApplicationNames = @("jupyter-app")', readiness)
+        self.assertIn('PSObject.Properties["status"]', readiness)
         self.assertIn("OPTIONAL_NOT_READY", readiness)
         self.assertNotIn("Invoke-JupyterPresentationValidation", clean_room)
 
