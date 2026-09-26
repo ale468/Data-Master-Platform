@@ -123,6 +123,8 @@ function Get-AirflowTechnicalTaskLog {
     $pattern = (
         "job_id:|SPARK_STAGE_RESULT=|PRESENTATION_EVIDENCE=|" +
         "PRESENTATION_EVIDENCE_STATUS=|DATA_VAULT_[A-Z_]+=PASS|" +
+        "GOLD_STORAGE_PATH_STATUS=PASS|" +
+        "BUSINESS_VAULT_GOLD_PATH_SEPARATION_STATUS=PASS|" +
         "MASKING_STATUS=PASS|GOLD_PII_EXPOSURE_STATUS=PASS|" +
         "Task exited with return code|exit code 137"
     )
@@ -378,8 +380,9 @@ function Save-AirflowDurableEvidence {
         [regex]::Escape("PRESENTATION_EVIDENCE_STATUS=PASS")) {
         throw "Presentation evidence payload is missing from the durable source."
     }
-    $presentation = $evidenceMatches[$evidenceMatches.Count - 1].Groups[1].Value |
-        ConvertFrom-Json
+    $presentation = ConvertFrom-DataMasterJson -Json (
+        $evidenceMatches[$evidenceMatches.Count - 1].Groups[1].Value
+    )
     if ($presentation.status -ne "SUCCESS") {
         throw "Presentation evidence status is not SUCCESS."
     }
@@ -398,9 +401,6 @@ function Save-AirflowDurableEvidence {
             "GOLD_STORAGE_PATH_STATUS=PASS",
             "BUSINESS_VAULT_GOLD_PATH_SEPARATION_STATUS=PASS"
         )
-    }
-    if ($presentation.PSObject.Properties.Name -contains "multibatch") {
-        $evidence["multibatch"] = $presentation.multibatch
     }
     $maskingMarkers = @(
         "MASKING_STATUS=PASS", "GOLD_PII_EXPOSURE_STATUS=PASS"
@@ -575,6 +575,9 @@ function Save-AirflowDurableEvidence {
             contains_business_payload = $false
         }
         operational_risks = $risks
+    }
+    if ($presentation.PSObject.Properties.Name -contains "multibatch") {
+        $evidence["multibatch"] = $presentation.multibatch
     }
     if ($hasStorageEvidence) {
         $evidence["storage"] = [ordered]@{

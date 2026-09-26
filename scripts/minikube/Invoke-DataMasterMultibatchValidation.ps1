@@ -42,6 +42,30 @@ $steps = @(
     [ordered]@{ Name = "batch_3"; SourceBatch = "batch-3"; BatchId = "$ScenarioId-b3"; RunId = "$ScenarioId-b3" }
 )
 
+function Assert-MultibatchStepEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Evidence,
+
+        [Parameter(Mandatory = $true)]
+        [object]$Step,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedScenarioId
+    )
+
+    if (-not ($Evidence.PSObject.Properties.Name -contains "multibatch")) {
+        throw "Missing multibatch evidence for $($Step.Name)."
+    }
+    if ($Evidence.multibatch.scenario_id -ne $ExpectedScenarioId -or
+        $Evidence.multibatch.batch_id -ne $Step.BatchId -or
+        $Evidence.multibatch.run_id -ne $Step.RunId -or
+        $Evidence.multibatch.source_batch -ne $Step.SourceBatch) {
+        throw "Multibatch identifiers do not match for $($Step.Name)."
+    }
+}
+
 $runEvidence = [ordered]@{}
 foreach ($step in $steps) {
     $config = [ordered]@{
@@ -51,27 +75,24 @@ foreach ($step in $steps) {
     }
     $configJson = $config | ConvertTo-Json -Compress
     $stepEvidencePath = "$EvidencePath.$($step.Name).json"
+    if (Test-Path -LiteralPath $stepEvidencePath) {
+        $stepEvidence = Read-DataMasterExecutionEvidence -Path $stepEvidencePath
+        Assert-MultibatchStepEvidence -Evidence $stepEvidence `
+            -Step $step -ExpectedScenarioId $ScenarioId
+        $runEvidence[$step.Name] = $stepEvidence
+        Write-Output "MULTIBATCH_STEP_EVIDENCE_MODE=REUSED_VALIDATED:$($step.Name)"
+        continue
+    }
     & (Join-Path $PSScriptRoot "Invoke-AirflowEndToEndTest.ps1") `
         -Profile $Profile `
         -RunId $step.RunId `
         -EvidencePath $stepEvidencePath `
         -DagRunConfigJson $configJson `
         -TimeoutSeconds $TimeoutSecondsPerRun
-    $runEvidence[$step.Name] = Get-Content -LiteralPath $stepEvidencePath -Raw |
-        ConvertFrom-Json
-}
-
-foreach ($step in $steps) {
-    $evidence = $runEvidence[$step.Name]
-    if (-not ($evidence.PSObject.Properties.Name -contains "multibatch")) {
-        throw "Missing multibatch evidence for $($step.Name)."
-    }
-    if ($evidence.multibatch.scenario_id -ne $ScenarioId -or
-        $evidence.multibatch.batch_id -ne $step.BatchId -or
-        $evidence.multibatch.run_id -ne $step.RunId -or
-        $evidence.multibatch.source_batch -ne $step.SourceBatch) {
-        throw "Multibatch identifiers do not match for $($step.Name)."
-    }
+    $stepEvidence = Read-DataMasterExecutionEvidence -Path $stepEvidencePath
+    Assert-MultibatchStepEvidence -Evidence $stepEvidence `
+        -Step $step -ExpectedScenarioId $ScenarioId
+    $runEvidence[$step.Name] = $stepEvidence
 }
 
 $b1 = $runEvidence.batch_1
