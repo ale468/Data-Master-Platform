@@ -48,6 +48,29 @@ function Get-AirflowDagRunState {
     return (Get-AirflowDagRun -TargetRunId $TargetRunId).state
 }
 
+function ConvertTo-DataMasterUtcDateTime {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Value
+    )
+
+    if ($Value -is [DateTimeOffset]) {
+        return $Value.UtcDateTime
+    }
+    if ($Value -is [DateTime]) {
+        return $Value.ToUniversalTime()
+    }
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        throw "Cannot convert an empty timestamp to UTC."
+    }
+    return [DateTimeOffset]::Parse(
+        $text,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::AssumeUniversal
+    ).UtcDateTime
+}
+
 function Get-AirflowTaskStates {
     param(
         [Parameter(Mandatory = $true)]
@@ -647,17 +670,17 @@ try {
         Get-AirflowDagRunState -TargetRunId $RunId | Out-Null
     }
     $dagRun = Get-AirflowDagRun -TargetRunId $RunId
-    $runStartText = [string]$dagRun.start_date
-    if (-not $runStartText) {
-        $runStartText = [string]$dagRun.execution_date
+    $runStartValue = $dagRun.start_date
+    if ($null -eq $runStartValue) {
+        $runStartValue = $dagRun.execution_date
     }
-    $observationStart = if ($runStartText) {
-        [DateTimeOffset]::Parse($runStartText).UtcDateTime
+    $observationStart = if ($null -ne $runStartValue) {
+        ConvertTo-DataMasterUtcDateTime -Value $runStartValue
     }
     else {
         $started.ToUniversalTime()
     }
-    if ($ResumeExistingRun -and $runStartText) {
+    if ($ResumeExistingRun -and $null -ne $runStartValue) {
         $started = $observationStart
     }
     Write-Output "AIRFLOW_DAG_TRIGGER_STATUS=PASS"
@@ -678,7 +701,8 @@ try {
             )
         $applications = (($applicationOutput -join "") | ConvertFrom-Json).items
         $matchingApplications = @($applications | Where-Object {
-            $created = [DateTimeOffset]::Parse($_.metadata.creationTimestamp)
+            $created = ConvertTo-DataMasterUtcDateTime `
+                -Value $_.metadata.creationTimestamp
             (Get-DataMasterLabelValue `
                 -Labels $_.spec.driver.labels `
                 -Name "data-master.io/runtime-profile") -eq "presentation-demo" -and
