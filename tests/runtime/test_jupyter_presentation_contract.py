@@ -164,6 +164,8 @@ class JupyterPresentationContractTests(unittest.TestCase):
             "argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded",
             minio_init,
         )
+        self.assertIn("mc admin policy detach local readonly", minio_init)
+        self.assertIn("| grep -q 'data-master-jupyter-readonly'", minio_init)
         self.assertIn('"s3:ListBucket"', minio_init)
         self.assertIn('"s3:GetObject"', minio_init)
         self.assertNotIn('"s3:PutObject"', minio_init)
