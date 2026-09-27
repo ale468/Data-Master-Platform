@@ -159,6 +159,11 @@ class JupyterPresentationContractTests(unittest.TestCase):
         self.assertNotIn("name: data-master-minio-secret", deployment)
         self.assertIn("jupyterCredentialsSecretName", minio_values)
         self.assertIn("data-master-jupyter-readonly", minio_init)
+        self.assertIn("argocd.argoproj.io/hook: PostSync", minio_init)
+        self.assertIn(
+            "argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded",
+            minio_init,
+        )
         self.assertIn('"s3:ListBucket"', minio_init)
         self.assertIn('"s3:GetObject"', minio_init)
         self.assertNotIn('"s3:PutObject"', minio_init)
