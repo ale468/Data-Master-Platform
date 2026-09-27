@@ -27,7 +27,8 @@
     "Dockerfile.airflow",
     "Dockerfile.spark",
     "scripts/validate_provenance.py",
-    "tests/runtime/test_provenance_compliance.py"
+    "tests/runtime/test_provenance_compliance.py",
+    "tests/runtime/test_visual_model_contract.py"
   ],
   "review_required_patterns": [
     {
