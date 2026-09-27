@@ -195,8 +195,10 @@ O monitoring é gravado pelos jobs como Delta no MinIO. Separadamente, os
 [scripts de coleta](scripts/minikube/DataMaster.ExecutionEvidence.ps1)
 consolidam estados e marcadores, e os
 [gates externos](scripts/minikube/Invoke-DataMasterQualityGates.ps1) conferem a
-execução integrada. A figura foca a DAG; Jupyter e os serviços PostgreSQL/Hive
-de apoio estão descritos no [guia GitOps](infra/README-gitops.md).
+execução integrada. A figura foca a DAG; Jupyter e o acesso Delta por caminho
+no MinIO estão descritos no [guia GitOps](infra/README-gitops.md). O catálogo
+Hive foi [adiado por decisão arquitetural](infra/decisions/0001-defer-hive-metastore.md),
+não descartado permanentemente.
 
 ### Três resultados distintos, sem misturar seus escopos
 
@@ -218,6 +220,7 @@ marcadores e artefatos.
 |---|---|---|
 | **Delta Lake** | Acrescenta transações ACID, controle de schema e histórico ao armazenamento em arquivos. A Bronze recebe CSV/JSON antes da organização analítica. | Parquet simples reduz componentes, mas exige outros mecanismos para transações e histórico. O volume medido é local, não uma prova de capacidade ilimitada. |
 | **Filesystem local / MinIO** | O filesystem simplifica a primeira reprodução; MinIO permite que pods separados acessem o mesmo armazenamento por S3A. | Object storage gerenciado facilita a evolução cloud, mas exige provedor, credenciais, políticas de acesso e avaliação de custo e desempenho. Não foi implantado aqui. |
+| **Delta por caminho, sem catálogo lógico neste estágio** | Mantém um único contrato realmente exercitado pelos jobs e notebooks e evita operar Hive/PostgreSQL sem consumidor. | Nomes lógicos e descoberta centralizada ficam adiados; a [ADR 0001](infra/decisions/0001-defer-hive-metastore.md) define quando reavaliar. |
 | **Raw Vault + Gold** | Mantém histórico e origem separados das regras de consumo, úteis para integrar fontes heterogêneas. | Um modelo dimensional direto seria mais simples para um conjunto pequeno e estável de análises. Data Vault acrescenta tabelas, joins e esforço de operação. |
 | **Spark** | Usa o mesmo conjunto de transformações nos perfis locais e permite processamento com executores separados no experimento Kubernetes. | Um banco analítico ou warehouse gerenciado pode simplificar SQL e consumo, mas muda o modelo de operação, custo e dependência de provedor. |
 | **Airflow + Spark Operator + Argo CD** | Separa orquestração, execução de jobs e configuração declarativa no caminho integrado. | O comando Docker é suficiente para verificar a lógica local; Kubernetes acrescenta recursos, RBAC e diagnóstico de múltiplos componentes. |

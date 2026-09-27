@@ -68,10 +68,8 @@ jobs:
           expected=(
             "infra/argocd/applications"
             "infra/helm-charts/airflow"
-            "infra/helm-charts/hive-metastore"
             "infra/helm-charts/jupyter"
             "infra/helm-charts/minio"
-            "infra/helm-charts/postgres-metastore"
           )
           mapfile -t discovered < <(
             find infra -name Chart.yaml -type f -print |

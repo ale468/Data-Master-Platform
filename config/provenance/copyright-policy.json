@@ -26,8 +26,12 @@
     ".pre-commit-config.yaml",
     "Dockerfile.airflow",
     "Dockerfile.spark",
+    "scripts/minikube/Compare-DataMasterRuntimeFootprints.ps1",
+    "scripts/minikube/Measure-DataMasterRuntimeFootprint.ps1",
+    "scripts/minikube/runtime_footprint.py",
     "scripts/validate_provenance.py",
-    "tests/runtime/test_provenance_compliance.py"
+    "tests/runtime/test_provenance_compliance.py",
+    "tests/runtime/test_runtime_footprint.py"
   ],
   "review_required_patterns": [
     {
@@ -48,10 +52,8 @@
     "LICENSE",
     "infra/getInitialPWDArgo.sh",
     "infra/helm-charts/airflow/templates/_helpers.tpl",
-    "infra/helm-charts/hive-metastore/templates/_helpers.tpl",
     "infra/helm-charts/jupyter/templates/_helpers.tpl",
-    "infra/helm-charts/minio/templates/_helpers.tpl",
-    "infra/helm-charts/postgres-metastore/templates/_helpers.tpl"
+    "infra/helm-charts/minio/templates/_helpers.tpl"
   ],
   "notice_components": [
     "pyspark",
