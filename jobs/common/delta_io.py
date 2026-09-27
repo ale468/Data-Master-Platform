@@ -166,6 +166,21 @@ class DeltaIO:
         except Exception as e:
             logger.error(f"Erro ao fazer merge em {path}: {str(e)}")
             raise
+
+    @staticmethod
+    def write_delta_insert_only(
+        spark: SparkSession,
+        df: DataFrame,
+        path: str,
+        merge_keys: List[str],
+    ) -> None:
+        """Insert unseen identities while preserving the first stored record."""
+        delta_table = DeltaTable.forPath(spark, path)
+        conditions = [f"t.{key} = s.{key}" for key in merge_keys]
+        delta_table.alias("t") \
+            .merge(df.alias("s"), " AND ".join(conditions)) \
+            .whenNotMatchedInsertAll() \
+            .execute()
     
     @staticmethod
     def get_table_stats(spark: SparkSession, path: str) -> Dict[str, Any]:

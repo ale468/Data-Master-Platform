@@ -63,10 +63,10 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
     def _hubs(self):
         schema = (
             "hash_key string, business_key string, load_datetime timestamp, "
-            "record_source string, batch_id string"
+            "record_source string, batch_id string, run_id string"
         )
         customer = self.spark.createDataFrame(
-            [("hc1", "c1", self.base_time, "core:customers", "batch-1")],
+            [("hc1", "c1", self.base_time, "core:customers", "batch-1", "run-1")],
             schema,
         ).selectExpr(
             "hash_key as hk_customer",
@@ -74,9 +74,10 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
             "load_datetime",
             "record_source",
             "batch_id",
+            "run_id",
         )
         account = self.spark.createDataFrame(
-            [("ha1", "a1", self.base_time, "core:accounts", "batch-1")],
+            [("ha1", "a1", self.base_time, "core:accounts", "batch-1", "run-1")],
             schema,
         ).selectExpr(
             "hash_key as hk_account",
@@ -84,6 +85,7 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
             "load_datetime",
             "record_source",
             "batch_id",
+            "run_id",
         )
         return {"hub_customer": customer, "hub_account": account}
 
@@ -98,10 +100,12 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
                         self.base_time,
                         record_source,
                         "batch-1",
+                        "run-1",
                     )
                 ],
                 "hk_link string, hk_customer string, hk_account string, "
-                "load_datetime timestamp, record_source string, batch_id string",
+                "load_datetime timestamp, record_source string, batch_id string, "
+                "run_id string",
             )
         }
 
@@ -115,13 +119,14 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
                 "core:customers",
                 self.base_time,
                 "batch-1",
+                "run-1",
             )
         ]
         return self.spark.createDataFrame(
             rows,
             "hk_customer string, hd_customer string, state string, "
             "load_datetime timestamp, record_source string, "
-            "effective_from timestamp, batch_id string",
+            "effective_from timestamp, batch_id string, run_id string",
         )
 
     def _gold(self, direct_pii=False):
@@ -220,6 +225,7 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
                 "core:customers",
                 self.base_time,
                 "batch-1",
+                "run-1",
             )
         ]
         result = self._evaluate(satellite=self._satellite(rows))
@@ -235,6 +241,7 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
                 "core:customers",
                 self.base_time,
                 "batch-1",
+                "run-1",
             ),
             (
                 "hc1",
@@ -244,6 +251,7 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
                 "core:customers",
                 self.base_time + timedelta(minutes=1),
                 "batch-2",
+                "run-2",
             ),
         ]
         result = self._evaluate(satellite=self._satellite(rows))
@@ -262,6 +270,7 @@ class ExecutableDataVaultGateTests(unittest.TestCase):
                 "core:customers",
                 self.base_time + timedelta(minutes=minute),
                 f"batch-{minute}",
+                f"run-{minute}",
             )
             for state, minute in (("A", 1), ("B", 2), ("A", 3))
         ]

@@ -16,6 +16,12 @@ SPEC.loader.exec_module(RUNTIME_FOOTPRINT)
 
 
 class RuntimeFootprintUnitTests(unittest.TestCase):
+    def test_profile_contract_accepts_iso_timestamp_markers(self):
+        self.assertIsNotNone(
+            RUNTIME_FOOTPRINT.PROFILE_NAME_PATTERN.fullmatch("data-master-hive-baseline-20260927T182500Z")
+        )
+        self.assertIsNone(RUNTIME_FOOTPRINT.PROFILE_NAME_PATTERN.fullmatch("minikube"))
+
     def test_kubernetes_quantities_are_normalized(self):
         self.assertEqual(RUNTIME_FOOTPRINT.cpu_millicores("250m"), 250)
         self.assertEqual(RUNTIME_FOOTPRINT.cpu_millicores("2"), 2000)

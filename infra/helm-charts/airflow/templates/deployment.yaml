@@ -88,6 +88,13 @@ spec:
           airflow variables set MONITORING_PATH s3a://lakehouse/monitoring
           airflow scheduler &
           exec airflow webserver --port 8080 --workers 1
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 90
         livenessProbe:
           httpGet:
             path: /health

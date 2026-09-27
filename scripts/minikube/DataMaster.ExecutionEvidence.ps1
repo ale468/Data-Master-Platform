@@ -22,6 +22,16 @@ $script:DataMasterExpectedGoldTables = @(
     "gold_clientes_protegidos"
 )
 
+$script:DataMasterExpectedBronzeSources = @(
+    "clientes",
+    "contas",
+    "transacoes",
+    "cartoes",
+    "eventos_digitais",
+    "agencias",
+    "produtos"
+)
+
 $script:DataMasterSparkApplicationCheckpointKind =
     "data_master_spark_application_observation_checkpoint"
 
@@ -456,12 +466,28 @@ function Save-DataMasterSparkApplicationObservation {
         $_.stage -eq $Stage
     })
     if ($existing.Count -eq 1) {
-        if ($existing[0].name -ne $Name -or
-            $existing[0].image -ne $Image -or
-            $existing[0].creation_timestamp -ne $CreationTimestamp) {
+        if ($existing[0].name -eq $Name -and
+            $existing[0].image -eq $Image -and
+            $existing[0].creation_timestamp -eq $CreationTimestamp) {
+            return $checkpoint
+        }
+        if ($existing[0].image -ne $Image) {
             throw "SparkApplication checkpoint contains conflicting observation for stage '$Stage'."
         }
-        return $checkpoint
+        $existingCreated = [DateTimeOffset]::Parse(
+            [string]$existing[0].creation_timestamp,
+            [System.Globalization.CultureInfo]::InvariantCulture
+        )
+        $candidateCreated = [DateTimeOffset]::Parse(
+            $CreationTimestamp,
+            [System.Globalization.CultureInfo]::InvariantCulture
+        )
+        if ($candidateCreated -le $existingCreated) {
+            return $checkpoint
+        }
+        $checkpoint.observations = @(
+            $checkpoint.observations | Where-Object { $_.stage -ne $Stage }
+        )
     }
     if ($existing.Count -gt 1) {
         throw "SparkApplication checkpoint contains duplicate stage '$Stage'."
@@ -502,7 +528,142 @@ function Assert-DataMasterMarkerSet {
     }
 }
 
-function Assert-DataMasterExecutionEvidence {
+function Assert-DataMasterMultibatchEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Multibatch,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DagRunId
+    )
+
+    Assert-DataMasterObjectShape -Value $Multibatch -Context "multibatch" `
+        -Required @(
+            "schema_version", "scenario_id", "source_batch", "batch_id",
+            "run_id", "batch_counts", "source_manifest", "history",
+            "late_arrival", "gold_rows"
+        )
+    Assert-DataMasterInteger -Value $Multibatch.schema_version `
+        -Context "multibatch.schema_version" -Minimum 1
+    if ([int]$Multibatch.schema_version -ne 1) {
+        throw "Unsupported multibatch evidence schema_version '$($Multibatch.schema_version)'."
+    }
+    foreach ($field in @("scenario_id", "source_batch", "batch_id", "run_id")) {
+        Assert-DataMasterNonEmptyString -Value $Multibatch.$field `
+            -Context "multibatch.$field"
+    }
+    foreach ($field in @("scenario_id", "batch_id", "run_id")) {
+        if ([string]$Multibatch.$field -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "Durable multibatch field '$field' must be path-safe."
+        }
+    }
+    if ($Multibatch.source_batch -notin @("batch-1", "batch-2", "batch-3")) {
+        throw "Durable multibatch source_batch is invalid."
+    }
+    if ($Multibatch.run_id -ne $DagRunId) {
+        throw "Durable multibatch run_id does not match the DAG run."
+    }
+
+    $layerCounts = @(
+        "bronze", "raw_vault_hubs", "raw_vault_links", "raw_vault_satellites"
+    )
+    Assert-DataMasterObjectShape -Value $Multibatch.batch_counts `
+        -Context "multibatch.batch_counts" -Required $layerCounts
+    foreach ($field in $layerCounts) {
+        Assert-DataMasterInteger -Value $Multibatch.batch_counts.$field `
+            -Context "multibatch.batch_counts.$field"
+    }
+
+    Assert-DataMasterObjectShape -Value $Multibatch.source_manifest `
+        -Context "multibatch.source_manifest" -Required @(
+            "generator_version", "generated_at", "manifest_sha256", "source_counts"
+        )
+    Assert-DataMasterNonEmptyString `
+        -Value $Multibatch.source_manifest.generator_version `
+        -Context "multibatch.source_manifest.generator_version"
+    ConvertTo-DataMasterTimestamp -Value $Multibatch.source_manifest.generated_at `
+        -Context "multibatch.source_manifest.generated_at" | Out-Null
+    if ($Multibatch.source_manifest.manifest_sha256 -notmatch '^[0-9a-f]{64}$') {
+        throw "Durable multibatch manifest_sha256 must be lowercase SHA-256."
+    }
+    Assert-DataMasterObjectShape -Value $Multibatch.source_manifest.source_counts `
+        -Context "multibatch.source_manifest.source_counts" `
+        -Required $script:DataMasterExpectedBronzeSources
+    foreach ($field in $script:DataMasterExpectedBronzeSources) {
+        Assert-DataMasterInteger `
+            -Value $Multibatch.source_manifest.source_counts.$field `
+            -Context "multibatch.source_manifest.source_counts.$field"
+    }
+
+    $historyIntegers = @(
+        "changed_customer_versions", "unchanged_customer_versions",
+        "new_customer_relationship_rows",
+        "existing_customer_new_relationship_rows"
+    )
+    $historyBooleans = @(
+        "new_customer_present", "new_customer_account_present"
+    )
+    Assert-DataMasterObjectShape -Value $Multibatch.history `
+        -Context "multibatch.history" `
+        -Required (@($historyIntegers) + @($historyBooleans))
+    foreach ($field in $historyIntegers) {
+        Assert-DataMasterInteger -Value $Multibatch.history.$field `
+            -Context "multibatch.history.$field"
+    }
+    foreach ($field in $historyBooleans) {
+        if ($Multibatch.history.$field -isnot [bool]) {
+            throw "Durable multibatch history field '$field' must be boolean."
+        }
+    }
+
+    $lateProperties = if (
+        $Multibatch.late_arrival -is [System.Collections.IDictionary]
+    ) {
+        @($Multibatch.late_arrival.Keys | ForEach-Object { [string]$_ })
+    }
+    else {
+        @($Multibatch.late_arrival.PSObject.Properties.Name)
+    }
+    $lateRequired = @("transaction_id", "present")
+    $lateDetails = @("event_timestamp", "load_timestamp", "batch_id", "run_id")
+    Assert-DataMasterObjectShape -Value $Multibatch.late_arrival `
+        -Context "multibatch.late_arrival" -Required $lateRequired `
+        -Optional $lateDetails
+    Assert-DataMasterNonEmptyString -Value $Multibatch.late_arrival.transaction_id `
+        -Context "multibatch.late_arrival.transaction_id"
+    if ($Multibatch.late_arrival.present -isnot [bool]) {
+        throw "Durable multibatch late_arrival.present must be boolean."
+    }
+    if ($Multibatch.late_arrival.present) {
+        foreach ($field in $lateDetails) {
+            if ($field -notin $lateProperties) {
+                throw "Durable multibatch late arrival is missing '$field'."
+            }
+        }
+        $eventTime = ConvertTo-DataMasterTimestamp `
+            -Value $Multibatch.late_arrival.event_timestamp `
+            -Context "multibatch.late_arrival.event_timestamp"
+        $loadTime = ConvertTo-DataMasterTimestamp `
+            -Value $Multibatch.late_arrival.load_timestamp `
+            -Context "multibatch.late_arrival.load_timestamp"
+        if ($loadTime -le $eventTime) {
+            throw "Durable multibatch late arrival load time must follow event time."
+        }
+        foreach ($field in @("batch_id", "run_id")) {
+            Assert-DataMasterNonEmptyString -Value $Multibatch.late_arrival.$field `
+                -Context "multibatch.late_arrival.$field"
+        }
+    }
+    elseif (@($lateDetails | Where-Object { $_ -in $lateProperties }).Count -gt 0) {
+        throw "Durable multibatch absent late arrival must not contain timestamps or load identifiers."
+    }
+
+    Assert-DataMasterInteger -Value $Multibatch.gold_rows `
+        -Context "multibatch.gold_rows" -Minimum 1
+}
+
+function Assert-DataMasterMultibatchValidationEvidence {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -510,11 +671,276 @@ function Assert-DataMasterExecutionEvidence {
     )
 
     Assert-DataMasterObjectShape -Value $Evidence -Context "root" -Required @(
+        "schema_version", "evidence_kind", "scenario_id", "profile",
+        "captured_at", "status", "sequence", "commits", "images", "runs",
+        "assertions", "privacy", "limitations"
+    )
+    Assert-DataMasterInteger -Value $Evidence.schema_version `
+        -Context "schema_version" -Minimum 1
+    if ([int]$Evidence.schema_version -ne 1 -or
+        $Evidence.evidence_kind -ne
+        "data_master_deterministic_multibatch_validation") {
+        throw "Unsupported deterministic multibatch evidence schema or kind."
+    }
+    foreach ($field in @("scenario_id", "profile")) {
+        Assert-DataMasterNonEmptyString -Value $Evidence.$field -Context $field
+        if ([string]$Evidence.$field -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "Durable multibatch summary field '$field' must be path-safe."
+        }
+    }
+    ConvertTo-DataMasterTimestamp -Value $Evidence.captured_at `
+        -Context "captured_at" | Out-Null
+    if ($Evidence.status -ne "PASS") {
+        throw "Durable multibatch summary status must be PASS."
+    }
+
+    $expectedSequence = @("batch-1", "batch-2", "batch-2-replay", "batch-3")
+    $sequence = @($Evidence.sequence | ForEach-Object { [string]$_ })
+    if (($sequence -join "|") -ne ($expectedSequence -join "|")) {
+        throw "Durable multibatch summary sequence is invalid."
+    }
+
+    $commitShas = @()
+    foreach ($commit in @($Evidence.commits)) {
+        Assert-DataMasterObjectShape -Value $commit -Context "commits[]" `
+            -Required @("sha", "purpose")
+        if ($commit.sha -notmatch '^[0-9a-f]{7,40}$') {
+            throw "Durable multibatch summary contains an invalid commit SHA."
+        }
+        Assert-DataMasterNonEmptyString -Value $commit.purpose `
+            -Context "commits[].purpose"
+        $commitShas += [string]$commit.sha
+    }
+    if ($commitShas.Count -eq 0) {
+        throw "Durable multibatch summary must contain at least one commit."
+    }
+    foreach ($image in @($Evidence.images)) {
+        Assert-DataMasterObjectShape -Value $image -Context "images[]" `
+            -Required @("role", "reference", "image_id")
+        Assert-DataMasterNonEmptyString -Value $image.role -Context "images[].role"
+        if ($image.reference -notmatch '^[a-z0-9./_-]+:git-([0-9a-f]{7,40})$' -or
+            $Matches[1] -notin $commitShas) {
+            throw "Durable multibatch summary image does not match a commit."
+        }
+        if ($image.image_id -notmatch '^sha256:[0-9a-f]{64}$') {
+            throw "Durable multibatch summary contains an invalid image ID."
+        }
+    }
+    if (@($Evidence.images).Count -lt 2) {
+        throw "Durable multibatch summary must contain Airflow and Spark images."
+    }
+
+    $expectedRuns = @(
+        [ordered]@{ name = "batch_1"; source = "batch-1" },
+        [ordered]@{ name = "batch_2"; source = "batch-2" },
+        [ordered]@{ name = "batch_2_replay"; source = "batch-2" },
+        [ordered]@{ name = "batch_3"; source = "batch-3" }
+    )
+    $runs = @($Evidence.runs)
+    if ($runs.Count -ne $expectedRuns.Count) {
+        throw "Durable multibatch summary must contain exactly four runs."
+    }
+    $layerCounts = @(
+        "bronze", "raw_vault_hubs", "raw_vault_links", "raw_vault_satellites"
+    )
+    $aggregateCounts = @($layerCounts) + @("gold")
+    $historyIntegers = @(
+        "changed_customer_versions", "unchanged_customer_versions",
+        "new_customer_relationship_rows",
+        "existing_customer_new_relationship_rows"
+    )
+    $historyBooleans = @(
+        "new_customer_present", "new_customer_account_present"
+    )
+    for ($index = 0; $index -lt $runs.Count; $index++) {
+        $run = $runs[$index]
+        $expected = $expectedRuns[$index]
+        Assert-DataMasterObjectShape -Value $run -Context "runs[]" -Required @(
+            "name", "source_batch", "batch_id", "run_id", "manifest_sha256",
+            "generated_at", "aggregate_counts", "batch_counts", "history",
+            "late_arrival"
+        )
+        if ($run.name -ne $expected.name -or
+            $run.source_batch -ne $expected.source) {
+            throw "Durable multibatch summary run order or source is invalid."
+        }
+        foreach ($field in @("batch_id", "run_id")) {
+            Assert-DataMasterNonEmptyString -Value $run.$field `
+                -Context "runs[].$field"
+            if ([string]$run.$field -notmatch '^[A-Za-z0-9._-]+$') {
+                throw "Durable multibatch summary run field '$field' must be path-safe."
+            }
+        }
+        if ($run.manifest_sha256 -notmatch '^[0-9a-f]{64}$') {
+            throw "Durable multibatch summary manifest SHA-256 is invalid."
+        }
+        ConvertTo-DataMasterTimestamp -Value $run.generated_at `
+            -Context "runs[].generated_at" | Out-Null
+        Assert-DataMasterObjectShape -Value $run.aggregate_counts `
+            -Context "runs[].aggregate_counts" -Required $aggregateCounts
+        foreach ($field in $aggregateCounts) {
+            Assert-DataMasterInteger -Value $run.aggregate_counts.$field `
+                -Context "runs[].aggregate_counts.$field" -Minimum 1
+        }
+        Assert-DataMasterObjectShape -Value $run.batch_counts `
+            -Context "runs[].batch_counts" -Required $layerCounts
+        foreach ($field in $layerCounts) {
+            Assert-DataMasterInteger -Value $run.batch_counts.$field `
+                -Context "runs[].batch_counts.$field"
+        }
+        Assert-DataMasterObjectShape -Value $run.history -Context "runs[].history" `
+            -Required (@($historyIntegers) + @($historyBooleans))
+        foreach ($field in $historyIntegers) {
+            Assert-DataMasterInteger -Value $run.history.$field `
+                -Context "runs[].history.$field"
+        }
+        foreach ($field in $historyBooleans) {
+            if ($run.history.$field -isnot [bool]) {
+                throw "Durable multibatch summary history field '$field' must be boolean."
+            }
+        }
+        Assert-DataMasterObjectShape -Value $run.late_arrival `
+            -Context "runs[].late_arrival" -Required @("transaction_id", "present") `
+            -Optional @("event_timestamp", "load_timestamp", "batch_id", "run_id")
+        Assert-DataMasterNonEmptyString -Value $run.late_arrival.transaction_id `
+            -Context "runs[].late_arrival.transaction_id"
+        if ($run.late_arrival.present -isnot [bool]) {
+            throw "Durable multibatch summary late-arrival flag must be boolean."
+        }
+        $lateProperties = if (
+            $run.late_arrival -is [System.Collections.IDictionary]
+        ) {
+            @($run.late_arrival.Keys | ForEach-Object { [string]$_ })
+        }
+        else {
+            @($run.late_arrival.PSObject.Properties.Name)
+        }
+        $lateDetails = @("event_timestamp", "load_timestamp", "batch_id", "run_id")
+        if ($run.late_arrival.present) {
+            foreach ($field in $lateDetails) {
+                if ($field -notin $lateProperties) {
+                    throw "Durable multibatch summary late arrival is missing '$field'."
+                }
+            }
+            ConvertTo-DataMasterTimestamp -Value $run.late_arrival.event_timestamp `
+                -Context "runs[].late_arrival.event_timestamp" | Out-Null
+            ConvertTo-DataMasterTimestamp -Value $run.late_arrival.load_timestamp `
+                -Context "runs[].late_arrival.load_timestamp" | Out-Null
+            foreach ($field in @("batch_id", "run_id")) {
+                Assert-DataMasterNonEmptyString -Value $run.late_arrival.$field `
+                    -Context "runs[].late_arrival.$field"
+            }
+        }
+        elseif (@($lateDetails | Where-Object { $_ -in $lateProperties }).Count -gt 0) {
+            throw "Durable multibatch summary absent late arrival has load details."
+        }
+    }
+    if ($runs[1].manifest_sha256 -ne $runs[2].manifest_sha256) {
+        throw "Durable multibatch summary replay manifest differs from Batch 2."
+    }
+    foreach ($field in $layerCounts) {
+        if ([long]$runs[2].aggregate_counts.$field -ne
+            [long]$runs[1].aggregate_counts.$field) {
+            throw "Durable multibatch summary replay changed '$field'."
+        }
+    }
+    if ($runs[0].late_arrival.present -or $runs[1].late_arrival.present -or
+        $runs[2].late_arrival.present -or -not $runs[3].late_arrival.present) {
+        throw "Durable multibatch summary late arrival must appear only in Batch 3."
+    }
+    $lateEvent = ConvertTo-DataMasterTimestamp `
+        -Value $runs[3].late_arrival.event_timestamp `
+        -Context "runs[3].late_arrival.event_timestamp"
+    $batch2Generated = ConvertTo-DataMasterTimestamp `
+        -Value $runs[1].generated_at -Context "runs[1].generated_at"
+    $lateLoad = ConvertTo-DataMasterTimestamp `
+        -Value $runs[3].late_arrival.load_timestamp `
+        -Context "runs[3].late_arrival.load_timestamp"
+    if (-not ($lateEvent -lt $batch2Generated -and
+        $batch2Generated -lt $lateLoad)) {
+        throw "Durable multibatch summary late-arrival timestamps are invalid."
+    }
+    $changedHistory = @($runs | ForEach-Object {
+        [long]$_.history.changed_customer_versions
+    })
+    if (($changedHistory -join "|") -ne "1|2|2|2" -or
+        @($runs | Where-Object {
+            [long]$_.history.unchanged_customer_versions -ne 1
+        }).Count -ne 0) {
+        throw "Durable multibatch summary customer history is invalid."
+    }
+
+    Assert-DataMasterObjectShape -Value $Evidence.assertions -Context "assertions" `
+        -Required @(
+            "deterministic_replay_manifest", "replay_layer_deltas",
+            "changed_customer_versions_after_batch_2",
+            "unchanged_customer_versions", "new_entity_and_relationships",
+            "late_arrival_event_before_batch_2_generation",
+            "late_arrival_loaded_after_batch_2_generation",
+            "gold_rebuilt_after_each_run"
+        )
+    foreach ($field in @(
+        "deterministic_replay_manifest",
+        "late_arrival_event_before_batch_2_generation",
+        "late_arrival_loaded_after_batch_2_generation",
+        "gold_rebuilt_after_each_run"
+    )) {
+        if ($Evidence.assertions.$field -isnot [bool] -or
+            -not $Evidence.assertions.$field) {
+            throw "Durable multibatch summary assertion '$field' must be true."
+        }
+    }
+    Assert-DataMasterObjectShape -Value $Evidence.assertions.replay_layer_deltas `
+        -Context "assertions.replay_layer_deltas" -Required $layerCounts
+    foreach ($field in $layerCounts) {
+        Assert-DataMasterInteger -Value $Evidence.assertions.replay_layer_deltas.$field `
+            -Context "assertions.replay_layer_deltas.$field"
+        if ([long]$Evidence.assertions.replay_layer_deltas.$field -ne 0) {
+            throw "Durable multibatch replay delta for '$field' must be zero."
+        }
+    }
+    if ([long]$Evidence.assertions.changed_customer_versions_after_batch_2 -ne 2 -or
+        [long]$Evidence.assertions.unchanged_customer_versions -ne 1 -or
+        $Evidence.assertions.new_entity_and_relationships -ne "PASS") {
+        throw "Durable multibatch history or entity assertions are invalid."
+    }
+
+    Assert-DataMasterTechnicalOnlyPrivacy -Privacy $Evidence.privacy `
+        -Context "privacy"
+    $limitations = @($Evidence.limitations)
+    if ($limitations.Count -eq 0) {
+        throw "Durable multibatch summary must record limitations."
+    }
+    foreach ($limitation in $limitations) {
+        Assert-DataMasterNonEmptyString -Value $limitation -Context "limitations[]"
+    }
+    Assert-DataMasterSensitiveContent -Evidence $Evidence
+    return $Evidence
+}
+
+function Assert-DataMasterExecutionEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Evidence
+    )
+
+    $evidenceKind = if ($Evidence -is [System.Collections.IDictionary]) {
+        $Evidence["evidence_kind"]
+    }
+    else {
+        $Evidence.evidence_kind
+    }
+    if ($evidenceKind -eq "data_master_deterministic_multibatch_validation") {
+        return Assert-DataMasterMultibatchValidationEvidence -Evidence $Evidence
+    }
+
+    Assert-DataMasterObjectShape -Value $Evidence -Context "root" -Required @(
         "schema_version", "evidence_kind", "captured_at", "source", "dag",
         "commits", "images", "spark_applications", "stages",
         "quality_gates", "technical_lineage", "aggregate_counts",
         "privacy", "operational_risks"
-    ) -Optional @("storage")
+    ) -Optional @("storage", "multibatch")
     Assert-DataMasterInteger -Value $Evidence.schema_version `
         -Context "schema_version" -Minimum 1
     if ([int]$Evidence.schema_version -ne 1) {
@@ -788,6 +1214,10 @@ function Assert-DataMasterExecutionEvidence {
                 throw "Durable evidence Gold table path is invalid for '$tableName'."
             }
         }
+    }
+    if ("multibatch" -in $rootProperties) {
+        Assert-DataMasterMultibatchEvidence `
+            -Multibatch $Evidence.multibatch -DagRunId $Evidence.dag.run_id
     }
 
     Assert-DataMasterObjectShape -Value $Evidence.privacy -Context "privacy" `

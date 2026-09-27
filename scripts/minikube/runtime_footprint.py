@@ -18,6 +18,7 @@ from typing import Any, Iterable
 SCHEMA_VERSION = 1
 SNAPSHOT_KIND = "data_master_runtime_footprint"
 COMPARISON_KIND = "data_master_runtime_footprint_comparison"
+PROFILE_NAME_PATTERN = re.compile(r"data-master-[A-Za-z0-9-]+")
 FORBIDDEN_CANDIDATE_TOKENS = (
     "hive-metastore",
     "postgres-metastore",
@@ -185,7 +186,7 @@ def _images(pods: dict[str, Any]) -> list[str]:
 
 
 def capture_snapshot(args: argparse.Namespace) -> dict[str, Any]:
-    if not re.fullmatch(r"data-master-[a-z0-9-]+", args.profile):
+    if not PROFILE_NAME_PATTERN.fullmatch(args.profile):
         raise ValueError("Profile must be dedicated and start with data-master-")
     if args.samples < 2:
         raise ValueError("At least two samples are required")

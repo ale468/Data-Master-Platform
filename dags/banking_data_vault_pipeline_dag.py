@@ -19,6 +19,8 @@ DEFAULT_ARGS = {
     "start_date": datetime(2026, 1, 1),
     "email_on_failure": False,
     "email_on_retry": False,
+    # Airflow owns the single execution retry. SparkApplication retries are
+    # disabled so two applications cannot process the same stage concurrently.
     "retries": 1,
     "retry_delay": timedelta(minutes=2),
 }
@@ -68,7 +70,10 @@ PATHS = {
     ),
 }
 
-BATCH_ID = "{{ ts_nodash | lower }}"
+BATCH_ID = "{{ dag_run.conf.get('batch_id', ts_nodash) | lower }}"
+RUN_ID = "{{ run_id }}"
+SCENARIO_ID = "{{ dag_run.conf.get('scenario_id', 'baseline') | lower }}"
+SOURCE_BATCH = "{{ dag_run.conf.get('source_batch', 'static') | lower }}"
 APPLICATION_SUFFIX = "{{ ts_nodash | lower }}"
 
 
@@ -93,6 +98,9 @@ def _spark_task(stage: str) -> SparkKubernetesOperator:
             service_account=SPARK_SERVICE_ACCOUNT,
             paths=PATHS,
             application_name=application_name,
+            run_id=RUN_ID,
+            scenario_id=SCENARIO_ID,
+            source_batch=SOURCE_BATCH,
         ),
         get_logs=True,
         log_events_on_failure=True,

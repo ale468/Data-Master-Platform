@@ -5,6 +5,8 @@ metadata:
   annotations:
     helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
   labels:
     app.kubernetes.io/name: {{ include "minio.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -27,6 +29,16 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.credentialsSecretName }}
                   key: MINIO_SECRET_KEY
+            - name: JUPYTER_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jupyterCredentialsSecretName }}
+                  key: MINIO_ACCESS_KEY
+            - name: JUPYTER_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.jupyterCredentialsSecretName }}
+                  key: MINIO_SECRET_KEY
           command:
             - sh
             - -c
@@ -38,5 +50,31 @@ spec:
               mc mb --ignore-existing local/silver
               mc mb --ignore-existing local/gold
               mc mb --ignore-existing local/warehouse
+              cat > /tmp/data-master-jupyter-readonly.json <<'EOF'
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
+                    "Resource": ["arn:aws:s3:::lakehouse"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+                    "Resource": ["arn:aws:s3:::lakehouse/*"]
+                  }
+                ]
+              }
+              EOF
+              mc admin policy create local data-master-jupyter-readonly \
+                /tmp/data-master-jupyter-readonly.json
+              mc admin user add local "$JUPYTER_MINIO_ACCESS_KEY" "$JUPYTER_MINIO_SECRET_KEY"
+              mc admin policy detach local readonly \
+                --user "$JUPYTER_MINIO_ACCESS_KEY" || true
+              mc admin policy attach local data-master-jupyter-readonly \
+                --user "$JUPYTER_MINIO_ACCESS_KEY" || true
+              mc admin user info local "$JUPYTER_MINIO_ACCESS_KEY" --json \
+                | grep -q 'data-master-jupyter-readonly'
       serviceAccountName: {{ include "minio.serviceAccountName" . }}
   backoffLimit: 3
