@@ -14,6 +14,7 @@ service:
   consolePort: 9001
 
 credentialsSecretName: data-master-minio-secret
+jupyterCredentialsSecretName: data-master-jupyter-minio-secret
 
 clientImage:
   repository: bitnamilegacy/minio-client

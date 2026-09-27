@@ -36,6 +36,7 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             "Invoke-SparkIntegrationTest.ps1",
             "Invoke-AirflowEndToEndTest.ps1",
             "Invoke-DataMasterQualityGates.ps1",
+            "Invoke-JupyterPresentationValidation.ps1",
             "Test-DataMasterExecutionEvidence.ps1",
             "Start-DataMasterPortForwards.ps1",
             "Stop-DataMasterPortForwards.ps1",
@@ -380,10 +381,11 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             "bde2020/hive:2.3.2-postgresql-metastore",
             "ghcr.io/l33tlamer/minio-backup:RELEASE.2025-04-22T22-12-26Z",
             "bitnamilegacy/minio-client:2024.1.13-debian-11-r0",
-            "quay.io/jupyter/pyspark-notebook:2024-04-01",
             "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
         ):
             self.assertIn(image, importer)
+        self.assertIn('"${JupyterRepository}:$Tag"', importer)
+        self.assertNotIn("quay.io/jupyter/pyspark-notebook", importer)
         self.assertIn("MINIKUBE_RUNTIME_DEPENDENCY_IMPORT_STATUS=PASS", importer)
         self.assertIn("docker images --quiet $image", importer)
         self.assertIn("Import-DataMasterDockerImageStream", importer)
@@ -449,6 +451,11 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertNotIn("$created.UtcDateTime", e2e)
         self.assertNotIn("[DateTimeOffset]::Parse($runStartText)", e2e)
         self.assertIn("$observationStart", e2e)
+        self.assertIn("function ConvertTo-DataMasterUtcDateTime", e2e)
+        self.assertIn("$Value -is [DateTime]", e2e)
+        self.assertIn("$created -ge $observationStart", e2e)
+        self.assertIn("GOLD_STORAGE_PATH_STATUS=PASS|", e2e)
+        self.assertIn("BUSINESS_VAULT_GOLD_PATH_SEPARATION_STATUS=PASS|", e2e)
         self.assertIn('-Labels $_.spec.driver.labels', e2e)
 
     def test_e2e_observer_persists_spark_checkpoint_before_completion(self):

@@ -50,6 +50,29 @@ function Get-AirflowDagRunState {
     return (Get-AirflowDagRun -TargetRunId $TargetRunId).state
 }
 
+function ConvertTo-DataMasterUtcDateTime {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Value
+    )
+
+    if ($Value -is [DateTimeOffset]) {
+        return $Value.UtcDateTime
+    }
+    if ($Value -is [DateTime]) {
+        return $Value.ToUniversalTime()
+    }
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        throw "Cannot convert an empty timestamp to UTC."
+    }
+    return [DateTimeOffset]::Parse(
+        $text,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::AssumeUniversal
+    ).UtcDateTime
+}
+
 function Get-AirflowTaskStates {
     param(
         [Parameter(Mandatory = $true)]
@@ -706,16 +729,16 @@ try {
     }
     $dagRun = Get-AirflowDagRun -TargetRunId $RunId
     $runStartValue = $dagRun.start_date
-    if (-not $runStartValue) {
+    if ($null -eq $runStartValue) {
         $runStartValue = $dagRun.execution_date
     }
-    $observationStart = if ($runStartValue) {
+    $observationStart = if ($null -ne $runStartValue) {
         ConvertTo-DataMasterUtcDateTime -Value $runStartValue
     }
     else {
         $started.ToUniversalTime()
     }
-    if ($ResumeExistingRun -and $runStartValue) {
+    if ($ResumeExistingRun -and $null -ne $runStartValue) {
         $started = $observationStart
     }
     Write-Output "AIRFLOW_DAG_TRIGGER_STATUS=PASS"
@@ -741,7 +764,7 @@ try {
             (Get-DataMasterLabelValue `
                 -Labels $_.spec.driver.labels `
                 -Name "data-master.io/runtime-profile") -eq "presentation-demo" -and
-                $created -ge $observationStart
+            $created -ge $observationStart
         } | Sort-Object { $_.metadata.creationTimestamp })
         foreach ($application in $matchingApplications) {
             $stage = Get-DataMasterLabelValue `
