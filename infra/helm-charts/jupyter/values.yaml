@@ -23,8 +23,6 @@ sparkSubmitArgs: >-
   --conf spark.hadoop.fs.s3a.path.style.access=true
   --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false
   --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
-  --conf spark.sql.catalogImplementation=hive
-  --conf spark.hadoop.hive.metastore.uris=thrift://hive-metastore.data-platform.svc.cluster.local:9083
   pyspark-shell
 env:
   - name: JUPYTER_ENABLE_LAB

@@ -21,8 +21,6 @@ if (-not $Tag) {
 }
 $projectImages = @("${AirflowRepository}:$Tag", "${SparkRepository}:$Tag")
 $runtimeDependencyImages = @(
-    "postgres:15",
-    "bde2020/hive:2.3.2-postgresql-metastore",
     "minio/minio:RELEASE.2024-01-28T22-35-53Z",
     "minio/mc:RELEASE.2024-01-13T08-44-48Z",
     "quay.io/jupyter/pyspark-notebook:2024-04-01",

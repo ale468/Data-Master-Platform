@@ -456,39 +456,6 @@ function Save-AirflowDurableEvidence {
             }
         }
     }
-    Set-AirflowDurableEvidencePhase -TargetRunId $TargetRunId `
-        -TargetPath $TargetPath -Phase "hive_runtime_status" | Out-Null
-    $hiveOutput = Invoke-DataMasterNative -FilePath "kubectl" `
-        -CaptureOutput -Arguments @(
-            "get", "pods", "-n", "data-platform",
-            "-l", "app.kubernetes.io/name=hive-metastore", "-o", "json"
-        )
-    $hivePods = (($hiveOutput -join "") | ConvertFrom-Json).items
-    if (@($hivePods).Count -eq 1) {
-        $containerStatus = $hivePods[0].status.containerStatuses[0]
-        if ([int]$containerStatus.restartCount -gt 0) {
-            $lastTerminated = $containerStatus.lastState.terminated
-            $risks += [ordered]@{
-                code = "HIVE_METASTORE_RESTARTS"
-                component = "hive_metastore"
-                status = "OPEN_LOCAL_RUNTIME_LIMITATION"
-                observed_at = if ($lastTerminated.finishedAt) {
-                    [string]$lastTerminated.finishedAt
-                }
-                else {
-                    [DateTimeOffset]::UtcNow.ToString("o")
-                }
-                blocking = $false
-                evidence_source = "kubernetes_container_status"
-                observed_exit_code = if ($null -ne $lastTerminated.exitCode) {
-                    [int]$lastTerminated.exitCode
-                }
-                else { 0 }
-                observed_count = [int]$containerStatus.restartCount
-            }
-        }
-    }
-
     $evidence = [ordered]@{
         schema_version = 1
         evidence_kind = "data_master_minikube_airflow_e2e"

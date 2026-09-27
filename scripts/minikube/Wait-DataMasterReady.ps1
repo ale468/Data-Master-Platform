@@ -74,7 +74,7 @@ try {
         return $LASTEXITCODE -eq 0
     }
 
-    $deployments = @("minio", "postgres-metastore", "hive-metastore", "airflow")
+    $deployments = @("minio", "airflow")
     foreach ($deployment in $deployments) {
         $remaining = [math]::Max(1, [int]($deadline - (Get-Date)).TotalSeconds)
         Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
@@ -98,7 +98,7 @@ try {
         )
     }
 
-    foreach ($service in @("minio", "postgres-metastore", "hive-metastore", "airflow")) {
+    foreach ($service in @("minio", "airflow")) {
         Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
             "get", "service", $service, "-n", "data-platform"
         ) | Out-Null
@@ -122,8 +122,6 @@ try {
     Write-Output "SPARK_OPERATOR_STATUS=PASS"
     Write-Output "SPARK_CRDS_STATUS=PASS"
     Write-Output "MINIO_STATUS=PASS"
-    Write-Output "POSTGRES_METASTORE_STATUS=PASS"
-    Write-Output "HIVE_METASTORE_STATUS=PASS"
     Write-Output "AIRFLOW_STATUS=PASS"
     Write-Output "DATA_MASTER_READY_STATUS=PASS"
 }
