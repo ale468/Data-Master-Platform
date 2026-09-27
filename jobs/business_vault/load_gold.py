@@ -37,10 +37,11 @@ def _write_gold(
     return {"table": table_name, "rows_written": rows_written, "status": "SUCCESS"}
 
 
-def _with_gold_metadata(df: DataFrame, batch_id: str) -> DataFrame:
+def _with_gold_metadata(df: DataFrame, batch_id: str, run_id: str = None) -> DataFrame:
     return (
         df.withColumn("load_datetime", F.current_timestamp())
         .withColumn("batch_id", F.lit(batch_id))
+        .withColumn("run_id", F.lit(run_id or batch_id))
     )
 
 
@@ -144,6 +145,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         transactions = RawBusinessViews.transactions(spark, raw_vault_path) \
             .withColumn(
@@ -161,7 +163,7 @@ class GoldLayerBuilder:
             F.max("valor_decimal").alias("valor_maximo"),
         )
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_transacoes_por_dia",
             gold_path,
         )
@@ -172,6 +174,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         transactions = RawBusinessViews.transactions(spark, raw_vault_path) \
             .withColumn(
@@ -206,7 +209,7 @@ class GoldLayerBuilder:
             "nome_cliente", F.lit("[Mascarado]")
         ).drop("cliente_id")
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_transacoes_por_cliente",
             gold_path,
         )
@@ -217,6 +220,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         customers = RawBusinessViews.customers(spark, raw_vault_path)
         gold = customers.select(
@@ -231,7 +235,7 @@ class GoldLayerBuilder:
             F.col("cidade"),
         )
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_clientes_protegidos",
             gold_path,
         )
@@ -242,6 +246,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         accounts = RawBusinessViews.accounts(spark, raw_vault_path) \
             .withColumn(
@@ -265,7 +270,7 @@ class GoldLayerBuilder:
         ).withColumn("categoria_produto", F.lit("Cartao"))
         gold = account_aggregate.unionByName(card_aggregate)
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_volume_por_produto",
             gold_path,
         )
@@ -276,6 +281,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         event_history = read_required_raw_table(
             spark,
@@ -295,7 +301,7 @@ class GoldLayerBuilder:
             ),
         )
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_eventos_digitais_por_canal",
             gold_path,
         )
@@ -306,6 +312,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         accounts = RawBusinessViews.accounts(spark, raw_vault_path) \
             .withColumn(
@@ -340,7 +347,7 @@ class GoldLayerBuilder:
             F.avg("saldo_decimal").alias("saldo_medio"),
         )
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_contas_por_agencia",
             gold_path,
         )
@@ -351,6 +358,7 @@ class GoldLayerBuilder:
         raw_vault_path: str,
         gold_path: str,
         batch_id: str,
+        run_id: str = None,
     ) -> Dict[str, Any]:
         transactions = RawBusinessViews.transactions(spark, raw_vault_path) \
             .withColumn(
@@ -399,7 +407,7 @@ class GoldLayerBuilder:
             _pseudonymize_column(F.col("conta_id"), prefix="ACC"),
         ).drop("conta_id")
         return _write_gold(
-            _with_gold_metadata(gold, batch_id),
+            _with_gold_metadata(gold, batch_id, run_id),
             "gold_risco_transacional_simplificado",
             gold_path,
         )
@@ -410,6 +418,7 @@ def run_business_vault_pipeline(
     raw_vault_path: str,
     gold_path: str,
     batch_id: str,
+    run_id: str = None,
 ) -> Dict[str, Any]:
     logger.info("=" * 80)
     logger.info("INICIANDO MATERIALIZAÇÃO GOLD A PARTIR DA BUSINESS VAULT LÓGICA")
@@ -418,6 +427,7 @@ def run_business_vault_pipeline(
         "gold_materialization_pipeline",
         "load_all_gold_tables",
         batch_id=batch_id,
+        run_id=run_id,
     )
     builders = [
         GoldLayerBuilder.create_gold_transacoes_por_dia,
@@ -431,7 +441,7 @@ def run_business_vault_pipeline(
     results: Dict[str, Dict[str, Any]] = {}
     try:
         for builder in builders:
-            result = builder(spark, raw_vault_path, gold_path, batch_id)
+            result = builder(spark, raw_vault_path, gold_path, batch_id, run_id)
             results[result["table"]] = result
             metrics.record_rows_written(result["rows_written"])
         total_rows = sum(item["rows_written"] for item in results.values())
@@ -468,6 +478,7 @@ def main() -> int:
         default=Config.GOLD_PATH,
     )
     parser.add_argument("--batch-id", type=str, default=None)
+    parser.add_argument("--run-id", type=str, default=None)
     args = parser.parse_args()
     spark = create_spark_session()
     batch_id = args.batch_id or MonitoringLogger.get_batch_id()
@@ -476,6 +487,7 @@ def main() -> int:
         args.raw_vault_path,
         args.gold_path,
         batch_id,
+        args.run_id,
     )
     return 0 if result["status"] == "SUCCESS" else 1
 

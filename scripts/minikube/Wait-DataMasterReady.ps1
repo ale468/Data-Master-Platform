@@ -68,16 +68,18 @@ try {
             if ($applicationName -in $optionalApplicationNames) {
                 return $false
             }
-            $statusProperty = $_.PSObject.Properties["status"]
-            if ($null -eq $statusProperty) { return $true }
-            $syncProperty = $statusProperty.Value.PSObject.Properties["sync"]
-            $healthProperty = $statusProperty.Value.PSObject.Properties["health"]
-            if ($null -eq $syncProperty -or $null -eq $healthProperty) {
-                return $true
-            }
+            $status = $_.PSObject.Properties["status"]
+            if ($null -eq $status) { return $true }
+            $sync = $status.Value.PSObject.Properties["sync"]
+            $health = $status.Value.PSObject.Properties["health"]
+            if (($null -eq $sync) -or ($null -eq $health)) { return $true }
+            $syncStatus = $sync.Value.PSObject.Properties["status"]
+            $healthStatus = $health.Value.PSObject.Properties["status"]
             return (
-                ($syncProperty.Value.status -ne "Synced") -or
-                ($healthProperty.Value.status -ne "Healthy")
+                ($null -eq $syncStatus) -or
+                ($null -eq $healthStatus) -or
+                ($syncStatus.Value -ne "Synced") -or
+                ($healthStatus.Value -ne "Healthy")
             )
         })
         return $notReady.Count -eq 0
@@ -132,10 +134,20 @@ try {
     $applicationJson = (& kubectl get applications.argoproj.io -n argocd -o json) -join ""
     $applicationItems = @((ConvertFrom-Json $applicationJson).items)
     $healthyApplications = @($applicationItems | Where-Object {
-        $_.status.health.status -eq "Healthy"
+        $itemStatus = $_.PSObject.Properties["status"]
+        if ($null -eq $itemStatus) { return $false }
+        $itemHealth = $itemStatus.Value.PSObject.Properties["health"]
+        if ($null -eq $itemHealth) { return $false }
+        $itemHealthStatus = $itemHealth.Value.PSObject.Properties["status"]
+        ($null -ne $itemHealthStatus) -and ($itemHealthStatus.Value -eq "Healthy")
     }).Count
     $syncedApplications = @($applicationItems | Where-Object {
-        $_.status.sync.status -eq "Synced"
+        $itemStatus = $_.PSObject.Properties["status"]
+        if ($null -eq $itemStatus) { return $false }
+        $itemSync = $itemStatus.Value.PSObject.Properties["sync"]
+        if ($null -eq $itemSync) { return $false }
+        $itemSyncStatus = $itemSync.Value.PSObject.Properties["status"]
+        ($null -ne $itemSyncStatus) -and ($itemSyncStatus.Value -eq "Synced")
     }).Count
     $jupyterApplication = @($applicationItems | Where-Object {
         $_.metadata.name -eq "jupyter-app"
@@ -146,13 +158,17 @@ try {
         if ($null -ne $jupyterStatus) {
             $jupyterSync = $jupyterStatus.Value.PSObject.Properties["sync"]
             $jupyterHealth = $jupyterStatus.Value.PSObject.Properties["health"]
-            if (
-                $null -ne $jupyterSync -and
-                $null -ne $jupyterHealth -and
-                $jupyterSync.Value.status -eq "Synced" -and
-                $jupyterHealth.Value.status -eq "Healthy"
-            ) {
-                $jupyterApplicationStatus = "READY"
+            if ($null -ne $jupyterSync -and $null -ne $jupyterHealth) {
+                $jupyterSyncStatus = $jupyterSync.Value.PSObject.Properties["status"]
+                $jupyterHealthStatus = $jupyterHealth.Value.PSObject.Properties["status"]
+                if (
+                    $null -ne $jupyterSyncStatus -and
+                    $null -ne $jupyterHealthStatus -and
+                    $jupyterSyncStatus.Value -eq "Synced" -and
+                    $jupyterHealthStatus.Value -eq "Healthy"
+                ) {
+                    $jupyterApplicationStatus = "READY"
+                }
             }
         }
     }

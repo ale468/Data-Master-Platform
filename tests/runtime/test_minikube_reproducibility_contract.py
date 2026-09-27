@@ -410,12 +410,46 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         self.assertIn('$statefulSet.metadata.namespace', ready_helper)
         self.assertNotIn('"statefulset", "--all", "-A"', ready_helper)
 
+    def test_ready_helper_treats_transient_missing_application_status_as_pending(self):
+        ready_helper = (SCRIPTS / "Wait-DataMasterReady.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('$_.PSObject.Properties["status"]', ready_helper)
+        self.assertIn('$status.Value.PSObject.Properties["sync"]', ready_helper)
+        self.assertIn('$status.Value.PSObject.Properties["health"]', ready_helper)
+        self.assertIn('if ($null -eq $status) { return $true }', ready_helper)
+        self.assertNotIn('$_.status.sync.status', ready_helper)
+        self.assertNotIn('$_.status.health.status', ready_helper)
+
+    def test_airflow_allows_cold_bootstrap_before_liveness_checks(self):
+        deployment = (
+            REPO_ROOT
+            / "infra"
+            / "helm-charts"
+            / "airflow"
+            / "templates"
+            / "deployment.yaml"
+        ).read_text(encoding="utf-8")
+        startup_probe = deployment.index("startupProbe:")
+        liveness_probe = deployment.index("livenessProbe:")
+        self.assertLess(startup_probe, liveness_probe)
+        self.assertIn("failureThreshold: 90", deployment[startup_probe:liveness_probe])
+        self.assertIn("periodSeconds: 5", deployment[startup_probe:liveness_probe])
+
     def test_e2e_observer_handles_optional_spark_labels(self):
         e2e = (SCRIPTS / "Invoke-AirflowEndToEndTest.ps1").read_text(
             encoding="utf-8"
         )
         self.assertIn("function Get-DataMasterLabelValue", e2e)
-        self.assertIn("$dagRun.start_date", e2e)
+        self.assertIn("function ConvertTo-DataMasterUtcDateTime", e2e)
+        self.assertIn("[System.Globalization.CultureInfo]::InvariantCulture", e2e)
+        self.assertIn("$runStartValue = $dagRun.start_date", e2e)
+        self.assertIn(
+            "ConvertTo-DataMasterUtcDateTime -Value $runStartValue", e2e
+        )
+        self.assertIn("$created -ge $observationStart", e2e)
+        self.assertNotIn("$created.UtcDateTime", e2e)
+        self.assertNotIn("[DateTimeOffset]::Parse($runStartText)", e2e)
         self.assertIn("$observationStart", e2e)
         self.assertIn("function ConvertTo-DataMasterUtcDateTime", e2e)
         self.assertIn("$Value -is [DateTime]", e2e)
@@ -470,7 +504,7 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
 
         self.assertIn('$hasStorageEvidence', e2e)
         self.assertIn('$evidence["storage"]', e2e)
-        self.assertIn('-Optional @("storage")', contract)
+        self.assertIn('-Optional @("storage", "multibatch")', contract)
         self.assertIn("Business Vault and Gold paths must be distinct", contract)
         self.assertIn("REPRODUCIBILITY_GOLD_PATH_CHECK=PASS", gates)
         self.assertIn("NOT_RECORDED_LEGACY_EVIDENCE", gates)

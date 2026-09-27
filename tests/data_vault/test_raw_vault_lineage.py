@@ -36,11 +36,11 @@ class RawVaultLineageTests(unittest.TestCase):
     def _source_rows(self):
         return self.spark.createDataFrame(
             [
-                ("c1", "Alice", "banking_sample", "clientes", "batch-1"),
-                ("c2", "Bob", "banking_partner", "clientes_partner", "batch-2"),
+                ("c1", "Alice", "banking_sample", "clientes", "batch-1", "run-1"),
+                ("c2", "Bob", "banking_partner", "clientes_partner", "batch-2", "run-2"),
             ],
             "cliente_id string, nome string, source_system string, "
-            "source_entity string, batch_id string",
+            "source_entity string, batch_id string, run_id string",
         )
 
     def test_two_sources_generate_specific_record_source(self):
@@ -70,8 +70,9 @@ class RawVaultLineageTests(unittest.TestCase):
 
     def test_required_metadata_is_not_nullable(self):
         invalid = self.spark.createDataFrame(
-            [("c1", None, "clientes", "batch-1")],
-            "cliente_id string, source_system string, source_entity string, batch_id string",
+            [("c1", None, "clientes", "batch-1", "run-1")],
+            "cliente_id string, source_system string, source_entity string, "
+            "batch_id string, run_id string",
         )
         with self.assertRaisesRegex(ValueError, "não podem ser nulos"):
             scope_to_source_batch(invalid, "batch-1")
@@ -98,13 +99,13 @@ class RawVaultLineageTests(unittest.TestCase):
             projected = source.select(*lineage_projection(business_columns))
             result = add_raw_vault_record_source(projected)
             self.assertTrue(
-                {"record_source", "batch_id"}.issubset(result.columns)
+                {"record_source", "batch_id", "run_id"}.issubset(result.columns)
             )
 
     def test_lineage_metadata_contains_no_payload_fields(self):
         self.assertEqual(
             set(lineage_projection([])),
-            {"source_system", "source_entity", "batch_id"},
+            {"source_system", "source_entity", "batch_id", "run_id"},
         )
 
     def test_reapplying_lineage_is_idempotent(self):

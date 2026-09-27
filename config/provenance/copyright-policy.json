@@ -28,12 +28,18 @@
     "Dockerfile.airflow",
     "Dockerfile.jupyter",
     "Dockerfile.spark",
+    "jobs/data_generation/multibatch_lifecycle.py",
     "jobs/presentation/jupyter_delta_path.py",
     "jobs/presentation/run_jupyter_delta_validation.py",
     "jobs/presentation/start_jupyter.sh",
+    "scripts/minikube/Invoke-DataMasterMultibatchValidation.ps1",
     "scripts/minikube/Invoke-JupyterPresentationValidation.ps1",
     "scripts/validate_provenance.py",
+    "tests/data_vault/test_multibatch_lifecycle.py",
+    "tests/runtime/test_committed_multibatch_evidence.py",
     "tests/runtime/test_jupyter_presentation_contract.py",
+    "tests/runtime/test_multibatch_generator.py",
+    "tests/runtime/test_multibatch_orchestration_contract.py",
     "tests/runtime/test_provenance_compliance.py"
   ],
   "review_required_patterns": [

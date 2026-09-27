@@ -8,6 +8,8 @@ param(
 
     [string]$EvidencePath,
 
+    [string]$DagRunConfigJson,
+
     [switch]$ResumeExistingRun,
 
     [switch]$MaterializeExistingEvidence,
@@ -83,6 +85,25 @@ function Get-AirflowTaskStates {
             $TargetRunId, "--output", "json"
         )
     return (($output -join [Environment]::NewLine) | ConvertFrom-Json)
+}
+
+function ConvertTo-DataMasterUtcDateTime {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Value
+    )
+
+    if ($Value -is [DateTimeOffset]) {
+        return $Value.UtcDateTime
+    }
+    if ($Value -is [datetime]) {
+        return $Value.ToUniversalTime()
+    }
+    return [DateTimeOffset]::Parse(
+        [string]$Value,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AssumeUniversal
+    ).UtcDateTime
 }
 
 function Get-AirflowTechnicalTaskLog {
@@ -382,8 +403,9 @@ function Save-AirflowDurableEvidence {
         [regex]::Escape("PRESENTATION_EVIDENCE_STATUS=PASS")) {
         throw "Presentation evidence payload is missing from the durable source."
     }
-    $presentation = $evidenceMatches[$evidenceMatches.Count - 1].Groups[1].Value |
-        ConvertFrom-Json
+    $presentation = ConvertFrom-DataMasterJson -Json (
+        $evidenceMatches[$evidenceMatches.Count - 1].Groups[1].Value
+    )
     if ($presentation.status -ne "SUCCESS") {
         throw "Presentation evidence status is not SUCCESS."
     }
@@ -577,6 +599,9 @@ function Save-AirflowDurableEvidence {
         }
         operational_risks = $risks
     }
+    if ($presentation.PSObject.Properties.Name -contains "multibatch") {
+        $evidence["multibatch"] = $presentation.multibatch
+    }
     if ($hasStorageEvidence) {
         $evidence["storage"] = [ordered]@{
             business_vault_path = [string]$presentation.storage.business_vault_path
@@ -595,6 +620,33 @@ function Save-AirflowDurableEvidence {
 Set-DataMasterMinikubeContext -Profile $Profile
 Write-Output "AIRFLOW_E2E_MATERIALIZE_EXISTING_EVIDENCE=$MaterializeExistingEvidence"
 $root = Get-DataMasterRepositoryRoot
+$dagRunConfig = $null
+if ($DagRunConfigJson) {
+    try {
+        $dagRunConfig = $DagRunConfigJson | ConvertFrom-Json
+    }
+    catch {
+        throw "-DagRunConfigJson must be valid JSON."
+    }
+    foreach ($required in @("scenario_id", "batch_id", "source_batch")) {
+        $property = $dagRunConfig.PSObject.Properties[$required]
+        if ($null -eq $property -or
+            [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+            throw "Airflow multibatch config requires '$required'."
+        }
+    }
+    if ([string]$dagRunConfig.source_batch -notin @("batch-1", "batch-2", "batch-3")) {
+        throw "Airflow source_batch must be batch-1, batch-2, or batch-3."
+    }
+    foreach ($value in @(
+        [string]$dagRunConfig.scenario_id,
+        [string]$dagRunConfig.batch_id
+    )) {
+        if ($value -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "Airflow scenario and batch identifiers must be path-safe."
+        }
+    }
+}
 $dagSource = [System.IO.File]::ReadAllText(
     (Join-Path $root "dags\banking_data_vault_pipeline_dag.py")
 )
@@ -663,10 +715,14 @@ try {
         "airflow", "dags", "unpause", $DagId
     ) | Out-Null
     if (-not $ResumeExistingRun) {
-        Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
+        $triggerArguments = @(
             "exec", "deployment/airflow", "-n", "data-platform", "--",
             "airflow", "dags", "trigger", $DagId, "--run-id", $RunId
         )
+        if ($DagRunConfigJson) {
+            $triggerArguments += @("--conf", $DagRunConfigJson)
+        }
+        Invoke-DataMasterNative -FilePath "kubectl" -Arguments $triggerArguments
     }
     else {
         Get-AirflowDagRunState -TargetRunId $RunId | Out-Null
