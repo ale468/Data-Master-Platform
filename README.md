@@ -524,6 +524,10 @@ Metastore como catálogo e não autoriza dados reais. Uma falha do Jupyter deve
 ser tratada separadamente; Airflow, Spark Operator e os gates do pipeline
 continuam sendo a autoridade do E2E.
 
+O resumo técnico sanitizado da execução Minikube, incluindo a releitura após
+restart do MinIO, está em
+[`issue-13-validation-summary.json`](tests/evidence/jupyter-presentation/issue-13-validation-summary.json).
+
 As credenciais são geradas em Kubernetes Secrets; não use senhas fixas nem
 copie valores para logs ou evidências. O [guia GitOps](infra/README-gitops.md)
 detalha as referências de Secrets e a inspeção dos componentes.
