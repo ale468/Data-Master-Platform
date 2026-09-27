@@ -73,7 +73,7 @@ spec:
               mc admin policy detach local readonly \
                 --user "$JUPYTER_MINIO_ACCESS_KEY" || true
               mc admin policy attach local data-master-jupyter-readonly \
-                --user "$JUPYTER_MINIO_ACCESS_KEY"
+                --user "$JUPYTER_MINIO_ACCESS_KEY" || true
               mc admin user info local "$JUPYTER_MINIO_ACCESS_KEY" --json \
                 | grep -q 'data-master-jupyter-readonly'
       serviceAccountName: {{ include "minio.serviceAccountName" . }}

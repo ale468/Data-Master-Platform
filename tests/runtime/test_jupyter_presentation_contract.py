@@ -165,6 +165,7 @@ class JupyterPresentationContractTests(unittest.TestCase):
             minio_init,
         )
         self.assertIn("mc admin policy detach local readonly", minio_init)
+        self.assertGreaterEqual(minio_init.count('|| true'), 2)
         self.assertIn("| grep -q 'data-master-jupyter-readonly'", minio_init)
         self.assertIn('"s3:ListBucket"', minio_init)
         self.assertIn('"s3:GetObject"', minio_init)
