@@ -158,6 +158,153 @@ $withStorage | Add-Member -NotePropertyName storage -NotePropertyValue ([ordered
 })
 Assert-DataMasterExecutionEvidence -Evidence $withStorage | Out-Null
 
+$withMultibatch = Copy-TestEvidence -Value $withStorage
+$withMultibatch | Add-Member -NotePropertyName multibatch -NotePropertyValue ([ordered]@{
+    schema_version = 1
+    scenario_id = "test-scenario"
+    source_batch = "batch-1"
+    batch_id = "test-scenario-b1"
+    run_id = "minikube-e2e-test"
+    batch_counts = [ordered]@{
+        bronze = 399
+        raw_vault_hubs = 240
+        raw_vault_links = 490
+        raw_vault_satellites = 399
+    }
+    source_manifest = [ordered]@{
+        generator_version = "deterministic-multibatch-v1"
+        generated_at = "2026-07-14T01:00:00+00:00"
+        manifest_sha256 = "a" * 64
+        source_counts = [ordered]@{
+            clientes = 10
+            contas = 10
+            transacoes = 100
+            cartoes = 10
+            eventos_digitais = 100
+            agencias = 2
+            produtos = 3
+        }
+    }
+    history = [ordered]@{
+        changed_customer_versions = 1
+        unchanged_customer_versions = 1
+        new_customer_present = $false
+        new_customer_account_present = $false
+        new_customer_relationship_rows = 0
+        existing_customer_new_relationship_rows = 0
+    }
+    late_arrival = [ordered]@{
+        transaction_id = "TRX_LATE_000001"
+        present = $false
+    }
+    gold_rows = 7
+})
+Assert-DataMasterExecutionEvidence -Evidence $withMultibatch | Out-Null
+
+$mismatchedMultibatchRun = Copy-TestEvidence -Value $withMultibatch
+$mismatchedMultibatchRun.multibatch.run_id = "different-run"
+Assert-TestThrows -ExpectedPattern "run_id does not match" -Action {
+    Assert-DataMasterExecutionEvidence -Evidence $mismatchedMultibatchRun | Out-Null
+}
+
+$invalidManifestHash = Copy-TestEvidence -Value $withMultibatch
+$invalidManifestHash.multibatch.source_manifest.manifest_sha256 = "not-a-sha"
+Assert-TestThrows -ExpectedPattern "manifest_sha256" -Action {
+    Assert-DataMasterExecutionEvidence -Evidence $invalidManifestHash | Out-Null
+}
+
+$summaryRuns = @()
+$runDefinitions = @(
+    [ordered]@{ name = "batch_1"; source = "batch-1"; batch = "scenario-b1"; run = "scenario-b1"; generated = "2026-01-01T00:00:00+00:00"; manifest = "a" * 64; changed = 1; aggregate = 100 },
+    [ordered]@{ name = "batch_2"; source = "batch-2"; batch = "scenario-b2"; run = "scenario-b2"; generated = "2026-01-03T00:00:00+00:00"; manifest = "b" * 64; changed = 2; aggregate = 120 },
+    [ordered]@{ name = "batch_2_replay"; source = "batch-2"; batch = "scenario-b2"; run = "scenario-b2-replay"; generated = "2026-01-03T00:00:00+00:00"; manifest = "b" * 64; changed = 2; aggregate = 120 },
+    [ordered]@{ name = "batch_3"; source = "batch-3"; batch = "scenario-b3"; run = "scenario-b3"; generated = "2026-01-04T00:00:00+00:00"; manifest = "c" * 64; changed = 2; aggregate = 130 }
+)
+foreach ($definition in $runDefinitions) {
+    $lateArrival = if ($definition.name -eq "batch_3") {
+        [ordered]@{
+            transaction_id = "TXN_MB_LATE_000000001"
+            present = $true
+            event_timestamp = "2026-01-02T00:00:00+00:00"
+            load_timestamp = "2026-01-05T00:00:00+00:00"
+            batch_id = $definition.batch
+            run_id = $definition.run
+        }
+    }
+    else {
+        [ordered]@{
+            transaction_id = "TXN_MB_LATE_000000001"
+            present = $false
+        }
+    }
+    $summaryRuns += [ordered]@{
+        name = $definition.name
+        source_batch = $definition.source
+        batch_id = $definition.batch
+        run_id = $definition.run
+        manifest_sha256 = $definition.manifest
+        generated_at = $definition.generated
+        aggregate_counts = [ordered]@{
+            bronze = $definition.aggregate
+            raw_vault_hubs = $definition.aggregate
+            raw_vault_links = $definition.aggregate
+            raw_vault_satellites = $definition.aggregate
+            gold = $definition.aggregate
+        }
+        batch_counts = [ordered]@{
+            bronze = 10
+            raw_vault_hubs = 5
+            raw_vault_links = 5
+            raw_vault_satellites = 10
+        }
+        history = [ordered]@{
+            changed_customer_versions = $definition.changed
+            unchanged_customer_versions = 1
+            new_customer_present = ($definition.name -ne "batch_1")
+            new_customer_account_present = ($definition.name -ne "batch_1")
+            new_customer_relationship_rows = if ($definition.name -eq "batch_1") { 0 } else { 1 }
+            existing_customer_new_relationship_rows = if ($definition.name -eq "batch_1") { 0 } else { 1 }
+        }
+        late_arrival = $lateArrival
+    }
+}
+$validSummary = [ordered]@{
+    schema_version = 1
+    evidence_kind = "data_master_deterministic_multibatch_validation"
+    scenario_id = "scenario"
+    profile = "data-master-multibatch-test"
+    captured_at = "2026-01-05T01:00:00+00:00"
+    status = "PASS"
+    sequence = @("batch-1", "batch-2", "batch-2-replay", "batch-3")
+    commits = $valid.commits
+    images = $valid.images
+    runs = $summaryRuns
+    assertions = [ordered]@{
+        deterministic_replay_manifest = $true
+        replay_layer_deltas = [ordered]@{
+            bronze = 0
+            raw_vault_hubs = 0
+            raw_vault_links = 0
+            raw_vault_satellites = 0
+        }
+        changed_customer_versions_after_batch_2 = 2
+        unchanged_customer_versions = 1
+        new_entity_and_relationships = "PASS"
+        late_arrival_event_before_batch_2_generation = $true
+        late_arrival_loaded_after_batch_2_generation = $true
+        gold_rebuilt_after_each_run = $true
+    }
+    privacy = $valid.privacy
+    limitations = @("synthetic-local-only", "not-streaming")
+}
+Assert-DataMasterExecutionEvidence -Evidence $validSummary | Out-Null
+
+$invalidReplaySummary = Copy-TestEvidence -Value $validSummary
+$invalidReplaySummary.runs[2].aggregate_counts.bronze = 121
+Assert-TestThrows -ExpectedPattern "replay changed.*bronze" -Action {
+    Assert-DataMasterExecutionEvidence -Evidence $invalidReplaySummary | Out-Null
+}
+
 $sameStorageRoot = Copy-TestEvidence -Value $withStorage
 $sameStorageRoot.storage.business_vault_path = "s3a://lakehouse/gold"
 Assert-TestThrows -ExpectedPattern "paths must be distinct" -Action {
@@ -209,6 +356,20 @@ try {
             -Stage "bronze" -Name "run-bronze-12345678" `
             -Image "data-master-spark-jobs:git-deadbeef" `
             -CreationTimestamp "2026-07-14T01:00:00+00:00" | Out-Null
+    }
+    Save-DataMasterSparkApplicationObservation -Path $checkpointPath `
+        -DagId "banking_data_vault_pipeline" -RunId "minikube-e2e-test" `
+        -Stage "bronze" -Name "run-bronze-retry-12345678" `
+        -Image "data-master-spark-jobs:git-1234567" `
+        -CreationTimestamp "2026-07-14T01:01:00+00:00" | Out-Null
+    $retriedCheckpoint = Read-DataMasterSparkApplicationObservationCheckpoint `
+        -Path $checkpointPath -RequireComplete
+    $bronzeObservation = @($retriedCheckpoint.observations | Where-Object {
+        $_.stage -eq "bronze"
+    })
+    if ($bronzeObservation.Count -ne 1 -or
+        $bronzeObservation[0].name -ne "run-bronze-retry-12345678") {
+        throw "SparkApplication retry did not replace the older stage observation."
     }
 
     $missingCheckpointStage = Copy-TestEvidence -Value $checkpoint

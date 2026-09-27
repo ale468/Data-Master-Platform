@@ -484,6 +484,61 @@ contornar uma falha deste case.
 
 </details>
 
+### Ciclo determinístico de múltiplos batches
+
+O cenário multibatch usa a mesma DAG Airflow/Spark Operator da execução
+integrada e mantém os seus oito estágios. Cada lote é uma run separada; um
+executor encadeia quatro runs para representar três lotes lógicos:
+
+```text
+Batch 1 -> Batch 2 -> replay exato do Batch 2 -> Batch 3
+```
+
+O gerador usa seed e relógio de referência fixos. O Batch 2 repete entidades
+inalteradas, altera um cliente conhecido, cria cliente, contas, relações e
+transação. O Batch 3 inclui uma transação nova cujo tempo de negócio antecede
+o Batch 2, mas cujo tempo de carga pertence à terceira execução. Cada lote tem
+manifesto com contagens e SHA-256 dos arquivos.
+
+Crie um profile Minikube exclusivo a partir de uma revisão já publicada e, sem
+removê-lo ao final, execute o cenário:
+
+```powershell
+$demoProfile = "data-master-multibatch-" + `
+  (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmss")
+$revision = (git branch --show-current).Trim()
+
+.\scripts\minikube\Invoke-DataMasterCleanRoomValidation.ps1 `
+  -Revision $revision `
+  -Profile $demoProfile
+
+$scenario = "multibatch-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmss")
+
+.\scripts\minikube\Invoke-DataMasterMultibatchValidation.ps1 `
+  -Profile $demoProfile `
+  -ScenarioId $scenario `
+  -TimeoutSecondsPerRun 7200
+```
+
+O marcador `MULTIBATCH_VALIDATION_STATUS=PASS` somente é emitido quando:
+
+- o replay usa o mesmo manifesto e não aumenta Bronze, Hubs, Links ou
+  Satellites;
+- o cliente alterado possui duas versões e o cliente inalterado permanece com
+  uma;
+- as novas entidades e relações existem;
+- a chegada tardia preserva tempos de evento e carga distintos;
+- a Gold foi reconstruída após cada run.
+
+O JSON indicado por `MULTIBATCH_EVIDENCE_PATH` contém apenas identificadores
+sintéticos, hashes, horários e contagens técnicas. O profile permanece ativo
+para inspeção e não é removido pelo executor.
+
+Este cenário demonstra recorrência batch determinística, historização,
+idempotência e tratamento explícito de uma nova transação tardia. Ele não
+representa streaming, correção retroativa por tempo efetivo, SLA, alta
+disponibilidade ou benchmark de alto volume.
+
 <a id="observabilidade"></a>
 
 ### Observabilidade e detecção controlada de falhas

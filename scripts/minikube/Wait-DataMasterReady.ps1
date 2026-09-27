@@ -63,8 +63,17 @@ try {
         $applications = ($jsonText | ConvertFrom-Json).items
         if (@($applications).Count -ne $expectedApplications) { return $false }
         $notReady = @($applications | Where-Object {
-            ($_.status.sync.status -ne "Synced") -or
-            ($_.status.health.status -ne "Healthy")
+            $status = $_.PSObject.Properties["status"]
+            if ($null -eq $status) { return $true }
+            $sync = $status.Value.PSObject.Properties["sync"]
+            $health = $status.Value.PSObject.Properties["health"]
+            if (($null -eq $sync) -or ($null -eq $health)) { return $true }
+            $syncStatus = $sync.Value.PSObject.Properties["status"]
+            $healthStatus = $health.Value.PSObject.Properties["status"]
+            ($null -eq $syncStatus) -or
+            ($null -eq $healthStatus) -or
+            ($syncStatus.Value -ne "Synced") -or
+            ($healthStatus.Value -ne "Healthy")
         })
         return $notReady.Count -eq 0
     }

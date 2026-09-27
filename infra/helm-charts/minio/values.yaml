@@ -4,8 +4,8 @@ fullnameOverride: minio
 replicaCount: 1
 
 image:
-  repository: minio/minio
-  tag: RELEASE.2024-01-28T22-35-53Z
+  repository: ghcr.io/l33tlamer/minio-backup
+  tag: RELEASE.2025-04-22T22-12-26Z
   pullPolicy: IfNotPresent
 
 service:
@@ -16,8 +16,8 @@ service:
 credentialsSecretName: data-master-minio-secret
 
 clientImage:
-  repository: minio/mc
-  tag: RELEASE.2024-01-13T08-44-48Z
+  repository: bitnamilegacy/minio-client
+  tag: 2024.1.13-debian-11-r0
   pullPolicy: IfNotPresent
 
 # Persistence
