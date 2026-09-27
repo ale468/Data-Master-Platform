@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "data_master_jupyter_presentation_public_summary",
+  "issue": 13,
+  "status": "PASS",
+  "captured_at": "2026-09-27T01:05:19.5675491Z",
+  "implementation": {
+    "git_revision": "a98a0680036b74e1cff785a5772d1389d15413e2",
+    "profile": "data-master-jupyter-20260926T134133",
+    "argo_applications_expected": 8,
+    "argo_applications_synced": 8,
+    "argo_applications_healthy": 8,
+    "minio_postsync_hook": "PASS"
+  },
+  "pipeline": {
+    "evidence_revision": "6c358f9",
+    "dag_id": "banking_data_vault_pipeline",
+    "run_id": "issue13-jupyter-20260926T193449",
+    "state": "SUCCESS",
+    "stages": [
+      {
+        "task_id": "run_bronze",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_hubs",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_links",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_satellites",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_gold",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_data_vault_gate",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_masking_gate",
+        "status": "SUCCESS"
+      },
+      {
+        "task_id": "run_evidence",
+        "status": "SUCCESS"
+      }
+    ],
+    "aggregate_counts": {
+      "bronze": 3456,
+      "raw_vault_hubs": 1461,
+      "raw_vault_links": 2399,
+      "raw_vault_satellites": 3556,
+      "gold": 1336
+    },
+    "quality_gates": {
+      "data_vault": "PASS",
+      "masking": "PASS",
+      "reproducibility": "PASS"
+    }
+  },
+  "presentation": {
+    "status": "PASS",
+    "image": "data-master-jupyter:git-a98a068",
+    "image_id": "sha256:6b6052e32fda917de207ef9887093eaac5abfc1b9a8f271eca1d6300a255ead0",
+    "api": "PASS",
+    "notebook": "PASS",
+    "spark_version": "3.3.1",
+    "delta_version": "2.2.0",
+    "credentials_provider": "com.amazonaws.auth.EnvironmentVariableCredentialsProvider",
+    "layers": {
+      "bronze": {
+        "delta_version": 1,
+        "row_count": 1000,
+        "snapshot_stable": true,
+        "view": "bronze_transacoes"
+      },
+      "gold": {
+        "delta_version": 0,
+        "row_count": 123,
+        "snapshot_stable": true,
+        "view": "gold_transacoes_por_dia"
+      },
+      "raw_vault": {
+        "delta_version": 1,
+        "row_count": 1000,
+        "snapshot_stable": true,
+        "view": "raw_hub_transacao"
+      }
+    },
+    "prepared_gold_query": {
+      "result_rows": 10,
+      "status": "PASS",
+      "view": "gold_transacoes_por_dia"
+    },
+    "snapshot_consistency": "PASS"
+  },
+  "read_only_controls": {
+    "minio_policy": "data-master-jupyter-readonly",
+    "policy_attached": "PASS",
+    "delta_log_listing": "PASS",
+    "object_write_denied": "PASS",
+    "token_rotated_after_diagnostic": "PASS",
+    "token_absent_from_process_arguments": "PASS",
+    "token_absent_from_jupyter_environment": "PASS",
+    "token_config_mode": "0600"
+  },
+  "recovery": {
+    "minio_rollout_restart": "PASS",
+    "delta_read_after_restart": "PASS",
+    "minio_policy_after_restart": "PASS",
+    "write_denial_after_restart": "PASS",
+    "profile_preserved": true
+  },
+  "validation": {
+    "public_repository": "PASS",
+    "provenance": "PASS",
+    "python_compile": "PASS",
+    "runtime_contract_tests": {
+      "status": "PASS",
+      "count": 181
+    },
+    "durable_evidence_contract": "PASS",
+    "powershell_parse": {
+      "status": "PASS",
+      "files": 24
+    },
+    "helm_allowlist": {
+      "status": "PASS",
+      "charts": 6
+    },
+    "immutable_image_build": "PASS",
+    "port_forward_login_http": 200
+  },
+  "privacy": {
+    "classification": "technical_aggregate_only",
+    "contains_business_payload": false,
+    "contains_pii": false,
+    "contains_secrets": false,
+    "contains_local_paths": false
+  },
+  "limitations": [
+    "synthetic-local-only",
+    "read-only-diagnostic-path",
+    "not-production-serving",
+    "not-a-pipeline-dependency",
+    "no-sla-or-concurrency-claim",
+    "hive-metastore-not-used-as-jupyter-catalog"
+  ]
+}
