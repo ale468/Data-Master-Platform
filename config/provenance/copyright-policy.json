@@ -45,7 +45,8 @@
     "tests/runtime/test_multibatch_generator.py",
     "tests/runtime/test_multibatch_orchestration_contract.py",
     "tests/runtime/test_provenance_compliance.py",
-    "tests/runtime/test_runtime_footprint.py"
+    "tests/runtime/test_runtime_footprint.py",
+    "tests/runtime/test_visual_model_contract.py"
   ],
   "review_required_patterns": [
     {

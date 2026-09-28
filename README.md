@@ -241,6 +241,12 @@ novas implementações e medições.
 
 ## 3. Explicação sobre o Case Desenvolvido
 
+Para percorrer primeiro o negócio, depois a decomposição Data Vault e por fim o
+consumo, consulte o
+[modelo visual do domínio sintético e da linhagem Bronze → Raw Vault → Business Vault lógica → Gold](infra/model/data-domain-and-lineage.md).
+O diagrama distingue estruturas Delta físicas das composições lógicas e cobre
+os sete marts implementados.
+
 <a id="exemplo-cliente"></a>
 
 ### Um cliente, da origem à Gold
