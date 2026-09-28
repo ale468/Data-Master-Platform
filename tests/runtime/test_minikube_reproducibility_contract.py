@@ -320,7 +320,7 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, rendered_source)
         self.assertNotRegex(
             rendered_source,
-            re.compile(r"(?m)^\s*value:\s*(minio|hive|admin)\s*$"),
+            re.compile(r"(?m)^\s*value:\s*(minio|admin)\s*$"),
         )
         self.assertIn("secretKeyRef", rendered_source)
 
@@ -377,14 +377,14 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         )
         self.assertIn("-PreloadRuntimeDependencies", clean_room)
         for image in (
-            "postgres:15",
-            "bde2020/hive:2.3.2-postgresql-metastore",
             "ghcr.io/l33tlamer/minio-backup:RELEASE.2025-04-22T22-12-26Z",
             "bitnamilegacy/minio-client:2024.1.13-debian-11-r0",
             "ghcr.io/kubeflow/spark-operator/controller:2.5.0",
         ):
             self.assertIn(image, importer)
         self.assertIn('"${JupyterRepository}:$Tag"', importer)
+        self.assertNotIn("postgres:15", importer)
+        self.assertNotIn("bde2020/hive", importer)
         self.assertNotIn("quay.io/jupyter/pyspark-notebook", importer)
         self.assertIn("MINIKUBE_RUNTIME_DEPENDENCY_IMPORT_STATUS=PASS", importer)
         self.assertIn("docker images --quiet $image", importer)

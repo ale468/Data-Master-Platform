@@ -145,7 +145,6 @@ efêmero e os grava como Kubernetes Secrets:
 - `DATA_MASTER_MINIO_SECRET_KEY`;
 - `DATA_MASTER_JUPYTER_MINIO_ACCESS_KEY`;
 - `DATA_MASTER_JUPYTER_MINIO_SECRET_KEY`;
-- `DATA_MASTER_POSTGRES_PASSWORD`;
 - `DATA_MASTER_AIRFLOW_PASSWORD`;
 - `DATA_MASTER_JUPYTER_TOKEN`.
 
@@ -213,13 +212,14 @@ Pare os processos de port-forward quando terminar:
 
 ## Ordem declarativa atual
 
-O chart `infra/argocd/applications` renderiza sete Applications filhas. A
-Application raiz é aplicada separadamente pelo script de deploy.
+O chart `infra/argocd/applications` renderiza cinco Applications filhas. A
+Application raiz é aplicada separadamente pelo script de deploy; o estado
+esperado completo contém seis Applications.
 
 | Sync wave | Componentes |
 |---:|---|
 | 0 | Spark Operator |
-| 1 | PostgreSQL Metastore, Hive Metastore e MinIO |
+| 1 | MinIO |
 | 2 | Jupyter |
 | 3 | Airflow e RBAC dos Spark jobs |
 
@@ -230,6 +230,50 @@ comandos de inspeção.
 O app `spark-jobs` sincroniza o RBAC necessário. Os objetos
 `SparkApplication` são submetidos dinamicamente pelos testes de integração ou
 pelas tasks do Airflow; não ficam instalados permanentemente pelo app-of-apps.
+
+## Medição reproduzível da simplificação
+
+A remoção do Hive Metastore e de seu PostgreSQL deve ser medida em dois
+profiles dedicados e equivalentes: um baseline construído da `main` que ainda
+contém os componentes e um candidato construído desta alteração. Use a mesma
+configuração de CPU, memória, driver, carga, fase e número de amostras.
+
+O coletor exige Metrics Server e falha se as métricas não estiverem disponíveis:
+
+```powershell
+minikube addons enable metrics-server -p $baselineProfile
+minikube addons enable metrics-server -p $candidateProfile
+
+.\scripts\minikube\Measure-DataMasterRuntimeFootprint.ps1 `
+  -Profile $baselineProfile -Variant baseline -Phase ready-idle `
+  -SampleCount 6 -SampleIntervalSeconds 10 `
+  -OutputPath build\runtime-footprint\baseline-ready-idle.json
+
+.\scripts\minikube\Measure-DataMasterRuntimeFootprint.ps1 `
+  -Profile $candidateProfile -Variant candidate -Phase ready-idle `
+  -SampleCount 6 -SampleIntervalSeconds 10 `
+  -OutputPath build\runtime-footprint\candidate-ready-idle.json
+
+.\scripts\minikube\Compare-DataMasterRuntimeFootprints.ps1 `
+  -BaselinePath build\runtime-footprint\baseline-ready-idle.json `
+  -CandidatePath build\runtime-footprint\candidate-ready-idle.json `
+  -OutputPath build\runtime-footprint\comparison-ready-idle.json
+```
+
+Repita a captura com `-Phase e2e-active` enquanto a mesma carga E2E executa em
+cada profile e com `-Phase post-e2e` depois da conclusão. Durações de bootstrap
+e E2E podem ser informadas pelos parâmetros correspondentes quando tiverem
+sido obtidas pelo mesmo procedimento.
+
+O comparador recusa capacidade de nó, intervalo, quantidade de amostras, fase
+ou namespace diferentes. Ele registra contagens, requests/limits efetivamente
+aplicados aos pods, PVC solicitado, CPU/memória agregadas observadas e imagens
+e workloads removidos. O resultado não prova equivalência funcional: os gates
+Airflow, Delta, Data Vault, masking e Jupyter continuam obrigatórios.
+
+As saídas em `build/` são locais e ignoradas pelo Git. Publique somente resumo
+sanitizado associado aos SHAs medidos. Não converta essa medição local em
+alegação financeira, energética, cloud ou produtiva.
 
 ## Verificação e troubleshooting
 

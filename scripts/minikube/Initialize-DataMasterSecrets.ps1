@@ -11,13 +11,6 @@ param(
     [string]$JupyterMinioAccessKey = $env:DATA_MASTER_JUPYTER_MINIO_ACCESS_KEY,
 
     [string]$JupyterMinioSecretKey = $env:DATA_MASTER_JUPYTER_MINIO_SECRET_KEY,
-
-    [string]$PostgresUser = "hive_demo",
-
-    [string]$PostgresPassword = $env:DATA_MASTER_POSTGRES_PASSWORD,
-
-    [string]$PostgresDatabase = "metastore",
-
     [string]$AirflowAdminUsername = "admin",
 
     [string]$AirflowAdminPassword = $env:DATA_MASTER_AIRFLOW_PASSWORD,
@@ -41,7 +34,6 @@ if (-not $MinioAccessKey) { $MinioAccessKey = "dm" + (New-Guid).Guid.Replace("-"
 if (-not $MinioSecretKey) { $MinioSecretKey = New-DataMasterLocalSecretValue }
 if (-not $JupyterMinioAccessKey) { $JupyterMinioAccessKey = "dmj" + (New-Guid).Guid.Replace("-", "").Substring(0, 17) }
 if (-not $JupyterMinioSecretKey) { $JupyterMinioSecretKey = New-DataMasterLocalSecretValue }
-if (-not $PostgresPassword) { $PostgresPassword = New-DataMasterLocalSecretValue }
 if (-not $AirflowAdminPassword) { $AirflowAdminPassword = New-DataMasterLocalSecretValue }
 if (-not $JupyterToken) { $JupyterToken = New-DataMasterLocalSecretValue }
 $webserverSecret = New-DataMasterLocalSecretValue
@@ -53,11 +45,6 @@ Set-DataMasterKubernetesSecret -Name "data-master-minio-secret" -Namespace $Name
 Set-DataMasterKubernetesSecret -Name "data-master-jupyter-minio-secret" -Namespace $Namespace -Values @{
     MINIO_ACCESS_KEY = $JupyterMinioAccessKey
     MINIO_SECRET_KEY = $JupyterMinioSecretKey
-}
-Set-DataMasterKubernetesSecret -Name "data-master-postgres-secret" -Namespace $Namespace -Values @{
-    POSTGRES_USER = $PostgresUser
-    POSTGRES_PASSWORD = $PostgresPassword
-    POSTGRES_DB = $PostgresDatabase
 }
 Set-DataMasterKubernetesSecret -Name "data-master-airflow-secret" -Namespace $Namespace -Values @{
     AIRFLOW_ADMIN_USERNAME = $AirflowAdminUsername
@@ -71,7 +58,6 @@ Set-DataMasterKubernetesSecret -Name "data-master-jupyter-secret" -Namespace $Na
 $expected = @(
     "data-master-minio-secret",
     "data-master-jupyter-minio-secret",
-    "data-master-postgres-secret",
     "data-master-airflow-secret",
     "data-master-jupyter-secret"
 )

@@ -45,8 +45,6 @@ Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
 
 $charts = @(
     @{ Name = "minio"; Extra = @() },
-    @{ Name = "postgres-metastore"; Extra = @() },
-    @{ Name = "hive-metastore"; Extra = @() },
     @{ Name = "jupyter"; Extra = @(
         "--set-string", "image.repository=$JupyterImageRepository",
         "--set-string", "image.tag=$ImageTag"
