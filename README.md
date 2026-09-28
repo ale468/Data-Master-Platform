@@ -207,10 +207,19 @@ não descartado permanentemente.
 | Validação pública Docker | Validador PowerShell, a partir do processo Spark local. | `build/public-case-validation/case-validation.json`; resultado local sanitizado, ignorado pelo Git. |
 | Execução integrada | Coleta PowerShell de Airflow e SparkApplications. | `evidence/runtime/<run-id>.json`, criado pela execução; não é o JSON do caminho Docker. |
 | Experimento horizontal | Orquestrador e agregador específicos do benchmark. | [Artefato versionado](tests/evidence/horizontal-scaling/hscale-20260728064640.json); compara executores e equivalência funcional, sem provar uma execução da DAG Airflow. |
+| Remoção do catálogo não utilizado | Comparador de footprints após E2E funcional equivalente. | [Resumo técnico versionado](tests/evidence/runtime-footprint/issue8-20260928T010551Z.json); registra deltas agregados locais, sem publicar amostras brutas. |
 
 Ter código, DAG importável ou chart renderizado não demonstra que um cluster
 está ativo. O estado de cada execução deve ser conferido pelos seus próprios
 marcadores e artefatos.
+
+No ensaio local controlado da decisão de adiar Hive, a variante sem
+Hive/PostgreSQL reduziu 2 Applications, 2 Deployments, 2 pods, 1 Service, 1
+Secret, 1 PVC de 5 GiB, 100 millicores e 256 MiB de requests. Em seis amostras
+pós-E2E de 10 segundos, a memória média agregada caiu cerca de 543 MiB. O E2E
+do candidato foi 25,312 segundos mais lento nessa observação única; portanto,
+não há alegação de speedup. Os resultados são locais e não provam economia
+financeira, energética, cloud, capacidade produtiva ou SLA.
 
 <a id="decisoes"></a>
 
