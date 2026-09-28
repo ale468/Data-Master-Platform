@@ -143,7 +143,8 @@ efêmero e os grava como Kubernetes Secrets:
 
 - `DATA_MASTER_MINIO_ACCESS_KEY`;
 - `DATA_MASTER_MINIO_SECRET_KEY`;
-- `DATA_MASTER_POSTGRES_PASSWORD`;
+- `DATA_MASTER_JUPYTER_MINIO_ACCESS_KEY`;
+- `DATA_MASTER_JUPYTER_MINIO_SECRET_KEY`;
 - `DATA_MASTER_AIRFLOW_PASSWORD`;
 - `DATA_MASTER_JUPYTER_TOKEN`.
 
@@ -167,6 +168,42 @@ Endpoints:
 | MinIO Console | `http://localhost:9001` |
 | Jupyter | `http://localhost:8888` |
 
+## Validação isolada do Jupyter de apresentação
+
+O readiness geral exige os componentes do caminho crítico, mas trata a
+Application `jupyter-app` como opcional. Isso evita que uma falha da interface
+interativa invalide uma DAG Airflow/Spark já comprovada. A validação do Jupyter
+é deliberadamente executada depois do E2E:
+
+```powershell
+./scripts/minikube/Invoke-JupyterPresentationValidation.ps1 `
+  -Profile $profile `
+  -EvidencePath build/jupyter-presentation-validation.json
+```
+
+O validador confirma o pod e a API autenticada, carrega três snapshots Delta
+do MinIO com Spark local no próprio pod, registra as views
+`bronze_transacoes`, `raw_hub_transacao` e `gold_transacoes_por_dia`, executa a
+consulta Gold preparada e rejeita qualquer mudança de versão durante a
+inspeção. O JSON resultante contém imagem, versões, contagens e status; não
+contém token, credenciais, linhas de negócio ou paths locais.
+
+A imagem `data-master-jupyter:git-<sha>` é construída depois da imagem Spark e
+usa essa imagem como base. Assim, Jupyter e os SparkApplications compartilham
+as mesmas versões de Spark, Delta, Hadoop AWS e AWS SDK, enquanto JupyterLab é
+adicionado somente como superfície de apresentação. O container consome o
+token e uma identidade MinIO exclusiva por `secretKeyRef`. O Job de
+inicialização associa essa identidade à política
+`data-master-jupyter-readonly`, limitada a listar o bucket `lakehouse` e ler
+seus objetos; as credenciais administrativas usadas pelos pipelines não são
+montadas no pod Jupyter.
+
+O notebook canônico está em
+`jobs/presentation/notebooks/data_master_delta_presentation.ipynb`. A leitura
+é feita por path S3A centralizado no helper, e as células de apresentação usam
+views temporárias. Esta entrega não depende do Hive Metastore e não cria um
+segundo catálogo lógico.
+
 Pare os processos de port-forward quando terminar:
 
 ```powershell
@@ -175,13 +212,14 @@ Pare os processos de port-forward quando terminar:
 
 ## Ordem declarativa atual
 
-O chart `infra/argocd/applications` renderiza sete Applications filhas. A
-Application raiz é aplicada separadamente pelo script de deploy.
+O chart `infra/argocd/applications` renderiza cinco Applications filhas. A
+Application raiz é aplicada separadamente pelo script de deploy; o estado
+esperado completo contém seis Applications.
 
 | Sync wave | Componentes |
 |---:|---|
 | 0 | Spark Operator |
-| 1 | PostgreSQL Metastore, Hive Metastore e MinIO |
+| 1 | MinIO |
 | 2 | Jupyter |
 | 3 | Airflow e RBAC dos Spark jobs |
 
@@ -192,6 +230,50 @@ comandos de inspeção.
 O app `spark-jobs` sincroniza o RBAC necessário. Os objetos
 `SparkApplication` são submetidos dinamicamente pelos testes de integração ou
 pelas tasks do Airflow; não ficam instalados permanentemente pelo app-of-apps.
+
+## Medição reproduzível da simplificação
+
+A remoção do Hive Metastore e de seu PostgreSQL deve ser medida em dois
+profiles dedicados e equivalentes: um baseline construído da `main` que ainda
+contém os componentes e um candidato construído desta alteração. Use a mesma
+configuração de CPU, memória, driver, carga, fase e número de amostras.
+
+O coletor exige Metrics Server e falha se as métricas não estiverem disponíveis:
+
+```powershell
+minikube addons enable metrics-server -p $baselineProfile
+minikube addons enable metrics-server -p $candidateProfile
+
+.\scripts\minikube\Measure-DataMasterRuntimeFootprint.ps1 `
+  -Profile $baselineProfile -Variant baseline -Phase ready-idle `
+  -SampleCount 6 -SampleIntervalSeconds 10 `
+  -OutputPath build\runtime-footprint\baseline-ready-idle.json
+
+.\scripts\minikube\Measure-DataMasterRuntimeFootprint.ps1 `
+  -Profile $candidateProfile -Variant candidate -Phase ready-idle `
+  -SampleCount 6 -SampleIntervalSeconds 10 `
+  -OutputPath build\runtime-footprint\candidate-ready-idle.json
+
+.\scripts\minikube\Compare-DataMasterRuntimeFootprints.ps1 `
+  -BaselinePath build\runtime-footprint\baseline-ready-idle.json `
+  -CandidatePath build\runtime-footprint\candidate-ready-idle.json `
+  -OutputPath build\runtime-footprint\comparison-ready-idle.json
+```
+
+Repita a captura com `-Phase e2e-active` enquanto a mesma carga E2E executa em
+cada profile e com `-Phase post-e2e` depois da conclusão. Durações de bootstrap
+e E2E podem ser informadas pelos parâmetros correspondentes quando tiverem
+sido obtidas pelo mesmo procedimento.
+
+O comparador recusa capacidade de nó, intervalo, quantidade de amostras, fase
+ou namespace diferentes. Ele registra contagens, requests/limits efetivamente
+aplicados aos pods, PVC solicitado, CPU/memória agregadas observadas e imagens
+e workloads removidos. O resultado não prova equivalência funcional: os gates
+Airflow, Delta, Data Vault, masking e Jupyter continuam obrigatórios.
+
+As saídas em `build/` são locais e ignoradas pelo Git. Publique somente resumo
+sanitizado associado aos SHAs medidos. Não converta essa medição local em
+alegação financeira, energética, cloud ou produtiva.
 
 ## Verificação e troubleshooting
 

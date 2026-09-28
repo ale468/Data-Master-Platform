@@ -19,15 +19,33 @@
   ],
   "source_filenames": [
     "Dockerfile.airflow",
+    "Dockerfile.jupyter",
     "Dockerfile.spark"
   ],
   "owned_source_patterns": [
     ".github/workflows/provenance-compliance.yml",
     ".pre-commit-config.yaml",
     "Dockerfile.airflow",
+    "Dockerfile.jupyter",
     "Dockerfile.spark",
+    "jobs/data_generation/multibatch_lifecycle.py",
+    "jobs/presentation/jupyter_delta_path.py",
+    "jobs/presentation/run_jupyter_delta_validation.py",
+    "jobs/presentation/start_jupyter.sh",
+    "scripts/minikube/Compare-DataMasterRuntimeFootprints.ps1",
+    "scripts/minikube/Invoke-DataMasterMultibatchValidation.ps1",
+    "scripts/minikube/Invoke-JupyterPresentationValidation.ps1",
+    "scripts/minikube/Measure-DataMasterRuntimeFootprint.ps1",
+    "scripts/minikube/runtime_footprint.py",
     "scripts/validate_provenance.py",
+    "tests/data_vault/test_multibatch_lifecycle.py",
+    "tests/runtime/test_committed_runtime_footprint_evidence.py",
+    "tests/runtime/test_committed_multibatch_evidence.py",
+    "tests/runtime/test_jupyter_presentation_contract.py",
+    "tests/runtime/test_multibatch_generator.py",
+    "tests/runtime/test_multibatch_orchestration_contract.py",
     "tests/runtime/test_provenance_compliance.py",
+    "tests/runtime/test_runtime_footprint.py",
     "tests/runtime/test_visual_model_contract.py"
   ],
   "review_required_patterns": [
@@ -49,10 +67,8 @@
     "LICENSE",
     "infra/getInitialPWDArgo.sh",
     "infra/helm-charts/airflow/templates/_helpers.tpl",
-    "infra/helm-charts/hive-metastore/templates/_helpers.tpl",
     "infra/helm-charts/jupyter/templates/_helpers.tpl",
-    "infra/helm-charts/minio/templates/_helpers.tpl",
-    "infra/helm-charts/postgres-metastore/templates/_helpers.tpl"
+    "infra/helm-charts/minio/templates/_helpers.tpl"
   ],
   "notice_components": [
     "pyspark",
@@ -64,6 +80,7 @@
     "Kubernetes Python client",
     "Apache Hadoop AWS",
     "AWS SDK for Java",
+    "JupyterLab",
     "actions/checkout",
     "actions/setup-python",
     "actions/upload-artifact",

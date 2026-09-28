@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "evidence_kind": "data_master_hive_deferral_public_summary",
+  "status": "PASS",
+  "issue": 8,
+  "captured_at": "2026-09-28T01:05:51.013315Z",
+  "commits": {
+    "baseline": "44188fdc166f7fa965e19dc6f599a72cad92728d",
+    "candidate": "40f3d7e1914ae577fce315a9cb9756ef4b6e0a02"
+  },
+  "measurement_contract": {
+    "environment": "local_single_node_minikube",
+    "namespace": "data-platform",
+    "phase": "post-e2e",
+    "node_count": 1,
+    "node_cpu_millicores": 4000,
+    "node_memory_bytes": 12487077888,
+    "sample_count": 6,
+    "sample_interval_seconds": 10
+  },
+  "functional_equivalence": {
+    "baseline": {
+      "airflow_e2e": "PASS",
+      "spark_distributed_kubernetes": "PASS",
+      "delta_minio": "PASS",
+      "data_vault_quality": "PASS",
+      "masking": "PASS",
+      "jupyter_presentation": "PASS"
+    },
+    "candidate": {
+      "clean_room": "PASS",
+      "airflow_e2e": "PASS",
+      "spark_distributed_kubernetes": "PASS",
+      "delta_minio": "PASS",
+      "data_vault_quality": "PASS",
+      "masking": "PASS",
+      "jupyter_presentation": "PASS"
+    }
+  },
+  "removed_catalog_runtime": {
+    "workloads": ["hive-metastore", "postgres-metastore"],
+    "images": ["bde2020/hive:2.3.2-postgresql-metastore", "postgres:15"]
+  },
+  "object_counts": {
+    "argocd_applications": {"baseline": 8, "candidate": 6, "saved": 2},
+    "deployments": {"baseline": 5, "candidate": 3, "saved": 2},
+    "pods": {"baseline": 9, "candidate": 7, "saved": 2},
+    "services": {"baseline": 6, "candidate": 5, "saved": 1},
+    "persistent_volume_claims": {"baseline": 4, "candidate": 3, "saved": 1},
+    "secrets": {"baseline": 5, "candidate": 4, "saved": 1}
+  },
+  "configured_resources": {
+    "cpu_requests_millicores": {"baseline": 5200, "candidate": 5100, "saved": 100},
+    "cpu_limits_millicores": {"baseline": 6400, "candidate": 6200, "saved": 200},
+    "memory_requests_bytes": {"baseline": 11274289152, "candidate": 11005853696, "saved": 268435456},
+    "memory_limits_bytes": {"baseline": 16106127360, "candidate": 15569256448, "saved": 536870912},
+    "pvc_requested_bytes": {"baseline": 32212254720, "candidate": 26843545600, "saved": 5368709120}
+  },
+  "observed_resources": {
+    "cpu_average_millicores": {"baseline": 57, "candidate": 51, "saved": 6},
+    "cpu_peak_millicores": {"baseline": 60, "candidate": 52, "saved": 8},
+    "memory_average_bytes": {"baseline": 2069166080, "candidate": 1499788629, "saved": 569377451},
+    "memory_peak_bytes": {"baseline": 2074562560, "candidate": 1500143616, "saved": 574418944}
+  },
+  "durations": {
+    "bootstrap_seconds": {"baseline": null, "candidate": null},
+    "e2e_seconds": {"baseline": 2408.688, "candidate": 2434.0, "delta": 25.312}
+  },
+  "source_documents": {
+    "baseline_sha256": "8300d709c15055135b1939a6357e06b9beacaccba8f7b1925783bb51e3c6496e",
+    "candidate_sha256": "f436802d610982b6cedd4769219c067a84a54f35f1e5e8bd5d47d122e74d063c",
+    "comparison_sha256": "fc05d1ae61008dc550a525af342071c6bef2ff3c42161a81a0445c3cd2f78c91"
+  },
+  "privacy": {
+    "classification": "technical_aggregate_only",
+    "contains_pii": false,
+    "contains_secrets": false,
+    "contains_business_payload": false,
+    "contains_local_paths": false
+  },
+  "limitations": [
+    "single_local_observation_not_a_production_benchmark",
+    "observed_metrics_are_six_post_e2e_samples_not_capacity_planning",
+    "bootstrap_duration_unavailable_after_baseline_power_interruption_and_recovery",
+    "e2e_candidate_was_25.312_seconds_slower_so_no_speedup_claim",
+    "no_financial_energy_cloud_or_production_savings_claim"
+  ]
+}

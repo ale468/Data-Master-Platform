@@ -195,8 +195,10 @@ O monitoring é gravado pelos jobs como Delta no MinIO. Separadamente, os
 [scripts de coleta](scripts/minikube/DataMaster.ExecutionEvidence.ps1)
 consolidam estados e marcadores, e os
 [gates externos](scripts/minikube/Invoke-DataMasterQualityGates.ps1) conferem a
-execução integrada. A figura foca a DAG; Jupyter e os serviços PostgreSQL/Hive
-de apoio estão descritos no [guia GitOps](infra/README-gitops.md).
+execução integrada. A figura foca a DAG; Jupyter e o acesso Delta por caminho
+no MinIO estão descritos no [guia GitOps](infra/README-gitops.md). O catálogo
+Hive foi [adiado por decisão arquitetural](infra/decisions/0001-defer-hive-metastore.md),
+não descartado permanentemente.
 
 ### Três resultados distintos, sem misturar seus escopos
 
@@ -205,10 +207,19 @@ de apoio estão descritos no [guia GitOps](infra/README-gitops.md).
 | Validação pública Docker | Validador PowerShell, a partir do processo Spark local. | `build/public-case-validation/case-validation.json`; resultado local sanitizado, ignorado pelo Git. |
 | Execução integrada | Coleta PowerShell de Airflow e SparkApplications. | `evidence/runtime/<run-id>.json`, criado pela execução; não é o JSON do caminho Docker. |
 | Experimento horizontal | Orquestrador e agregador específicos do benchmark. | [Artefato versionado](tests/evidence/horizontal-scaling/hscale-20260728064640.json); compara executores e equivalência funcional, sem provar uma execução da DAG Airflow. |
+| Remoção do catálogo não utilizado | Comparador de footprints após E2E funcional equivalente. | [Resumo técnico versionado](tests/evidence/runtime-footprint/issue8-20260928T010551Z.json); registra deltas agregados locais, sem publicar amostras brutas. |
 
 Ter código, DAG importável ou chart renderizado não demonstra que um cluster
 está ativo. O estado de cada execução deve ser conferido pelos seus próprios
 marcadores e artefatos.
+
+No ensaio local controlado da decisão de adiar Hive, a variante sem
+Hive/PostgreSQL reduziu 2 Applications, 2 Deployments, 2 pods, 1 Service, 1
+Secret, 1 PVC de 5 GiB, 100 millicores e 256 MiB de requests. Em seis amostras
+pós-E2E de 10 segundos, a memória média agregada caiu cerca de 543 MiB. O E2E
+do candidato foi 25,312 segundos mais lento nessa observação única; portanto,
+não há alegação de speedup. Os resultados são locais e não provam economia
+financeira, energética, cloud, capacidade produtiva ou SLA.
 
 <a id="decisoes"></a>
 
@@ -218,6 +229,7 @@ marcadores e artefatos.
 |---|---|---|
 | **Delta Lake** | Acrescenta transações ACID, controle de schema e histórico ao armazenamento em arquivos. A Bronze recebe CSV/JSON antes da organização analítica. | Parquet simples reduz componentes, mas exige outros mecanismos para transações e histórico. O volume medido é local, não uma prova de capacidade ilimitada. |
 | **Filesystem local / MinIO** | O filesystem simplifica a primeira reprodução; MinIO permite que pods separados acessem o mesmo armazenamento por S3A. | Object storage gerenciado facilita a evolução cloud, mas exige provedor, credenciais, políticas de acesso e avaliação de custo e desempenho. Não foi implantado aqui. |
+| **Delta por caminho, sem catálogo lógico neste estágio** | Mantém um único contrato realmente exercitado pelos jobs e notebooks e evita operar Hive/PostgreSQL sem consumidor. | Nomes lógicos e descoberta centralizada ficam adiados; a [ADR 0001](infra/decisions/0001-defer-hive-metastore.md) define quando reavaliar. |
 | **Raw Vault + Gold** | Mantém histórico e origem separados das regras de consumo, úteis para integrar fontes heterogêneas. | Um modelo dimensional direto seria mais simples para um conjunto pequeno e estável de análises. Data Vault acrescenta tabelas, joins e esforço de operação. |
 | **Spark** | Usa o mesmo conjunto de transformações nos perfis locais e permite processamento com executores separados no experimento Kubernetes. | Um banco analítico ou warehouse gerenciado pode simplificar SQL e consumo, mas muda o modelo de operação, custo e dependência de provedor. |
 | **Airflow + Spark Operator + Argo CD** | Separa orquestração, execução de jobs e configuração declarativa no caminho integrado. | O comando Docker é suficiente para verificar a lógica local; Kubernetes acrescenta recursos, RBAC e diagnóstico de múltiplos componentes. |
@@ -464,6 +476,76 @@ port-forwards. Para abrir as interfaces após a conclusão:
 | MinIO API / Console | `http://localhost:9000` / `http://localhost:9001` |
 | Jupyter | `http://localhost:8888` |
 
+### Caminho de apresentação Jupyter → Spark → Delta/MinIO
+
+Jupyter é uma janela de inspeção opcional e read-only sobre os mesmos
+snapshots Delta sintéticos produzidos pela DAG. Ele não submete a DAG, não
+escreve nas camadas e não participa do critério de sucesso do E2E
+Airflow/Spark. A imagem Jupyter deriva da mesma imagem Spark imutável usada nos
+jobs, acrescentando somente JupyterLab e o notebook de apresentação. O pod
+recebe uma identidade MinIO dedicada à política
+`data-master-jupyter-readonly`, restrita a listar o bucket `lakehouse` e ler
+seus objetos, separada das credenciais administrativas dos pipelines.
+
+Depois de uma execução Airflow bem-sucedida no profile isolado, valide o
+caminho antes de abrir a interface:
+
+```powershell
+./scripts/minikube/Invoke-JupyterPresentationValidation.ps1 `
+  -Profile $demoProfile `
+  -EvidencePath build/jupyter-presentation-validation.json
+```
+
+O comando exige, de forma fail-closed:
+
+- pod Jupyter pronto e API autenticada;
+- Spark `3.3.1`, Delta `2.2.0` e credenciais S3A via variáveis do Secret;
+- leitura de `bronze_transacoes`, `raw_hub_transacao` e
+  `gold_transacoes_por_dia` no bucket `lakehouse`;
+- versão Delta estável durante cada inspeção;
+- consulta Gold preparada sem path físico digitado na apresentação;
+- evidência contendo apenas metadados e contagens técnicas.
+
+Com a validação aprovada, inicie os port-forwards e copie o token diretamente
+para a área de transferência, sem imprimi-lo no terminal:
+
+```powershell
+./scripts/minikube/Start-DataMasterPortForwards.ps1 -Profile $demoProfile
+$tokenB64 = kubectl --context $demoProfile get secret `
+  data-master-jupyter-secret -n data-platform `
+  -o jsonpath='{.data.JUPYTER_TOKEN}'
+$token = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($tokenB64))
+$token | Set-Clipboard
+Remove-Variable tokenB64, token
+```
+
+Abra `http://localhost:8888`, cole o token e execute, em ordem, o notebook
+[`data_master_delta_presentation.ipynb`](jobs/presentation/notebooks/data_master_delta_presentation.ipynb).
+O helper
+[`jupyter_delta_path.py`](jobs/presentation/jupyter_delta_path.py) centraliza
+os paths uma vez e registra views temporárias curtas; a demonstração passa a
+usar SQL e agregados sintéticos, não plumbing S3A.
+
+Se a validação falhar, inspecione somente o componente opcional antes de
+alterar o pipeline:
+
+```powershell
+kubectl --context $demoProfile get pods -n data-platform `
+  -l app.kubernetes.io/name=jupyter
+kubectl --context $demoProfile logs deployment/jupyter -n data-platform
+kubectl --context $demoProfile describe deployment/jupyter -n data-platform
+```
+
+Este caminho comprova inspeção local de snapshots sintéticos. Não transforma
+Jupyter em serving produtivo, não valida concorrência ou SLA, não adota Hive
+Metastore como catálogo e não autoriza dados reais. Uma falha do Jupyter deve
+ser tratada separadamente; Airflow, Spark Operator e os gates do pipeline
+continuam sendo a autoridade do E2E.
+
+O resumo técnico sanitizado da execução Minikube, incluindo a releitura após
+restart do MinIO, está em
+[`issue-13-validation-summary.json`](tests/evidence/jupyter-presentation/issue-13-validation-summary.json).
+
 As credenciais são geradas em Kubernetes Secrets; não use senhas fixas nem
 copie valores para logs ou evidências. O [guia GitOps](infra/README-gitops.md)
 detalha as referências de Secrets e a inspeção dos componentes.
@@ -489,6 +571,61 @@ tentativa precisa de alvo ausente. Nunca faça limpeza global do Docker para
 contornar uma falha deste case.
 
 </details>
+
+### Ciclo determinístico de múltiplos batches
+
+O cenário multibatch usa a mesma DAG Airflow/Spark Operator da execução
+integrada e mantém os seus oito estágios. Cada lote é uma run separada; um
+executor encadeia quatro runs para representar três lotes lógicos:
+
+```text
+Batch 1 -> Batch 2 -> replay exato do Batch 2 -> Batch 3
+```
+
+O gerador usa seed e relógio de referência fixos. O Batch 2 repete entidades
+inalteradas, altera um cliente conhecido, cria cliente, contas, relações e
+transação. O Batch 3 inclui uma transação nova cujo tempo de negócio antecede
+o Batch 2, mas cujo tempo de carga pertence à terceira execução. Cada lote tem
+manifesto com contagens e SHA-256 dos arquivos.
+
+Crie um profile Minikube exclusivo a partir de uma revisão já publicada e, sem
+removê-lo ao final, execute o cenário:
+
+```powershell
+$demoProfile = "data-master-multibatch-" + `
+  (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmss")
+$revision = (git branch --show-current).Trim()
+
+.\scripts\minikube\Invoke-DataMasterCleanRoomValidation.ps1 `
+  -Revision $revision `
+  -Profile $demoProfile
+
+$scenario = "multibatch-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmss")
+
+.\scripts\minikube\Invoke-DataMasterMultibatchValidation.ps1 `
+  -Profile $demoProfile `
+  -ScenarioId $scenario `
+  -TimeoutSecondsPerRun 7200
+```
+
+O marcador `MULTIBATCH_VALIDATION_STATUS=PASS` somente é emitido quando:
+
+- o replay usa o mesmo manifesto e não aumenta Bronze, Hubs, Links ou
+  Satellites;
+- o cliente alterado possui duas versões e o cliente inalterado permanece com
+  uma;
+- as novas entidades e relações existem;
+- a chegada tardia preserva tempos de evento e carga distintos;
+- a Gold foi reconstruída após cada run.
+
+O JSON indicado por `MULTIBATCH_EVIDENCE_PATH` contém apenas identificadores
+sintéticos, hashes, horários e contagens técnicas. O profile permanece ativo
+para inspeção e não é removido pelo executor.
+
+Este cenário demonstra recorrência batch determinística, historização,
+idempotência e tratamento explícito de uma nova transação tardia. Ele não
+representa streaming, correção retroativa por tempo efetivo, SLA, alta
+disponibilidade ou benchmark de alto volume.
 
 <a id="observabilidade"></a>
 

@@ -8,6 +8,8 @@ param(
 
     [string]$SparkImageRepository = "data-master-spark-jobs",
 
+    [string]$JupyterImageRepository = "data-master-jupyter",
+
     [ValidateRange(120, 1800)]
     [int]$TimeoutSeconds = 900
 )
@@ -43,9 +45,10 @@ Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
 
 $charts = @(
     @{ Name = "minio"; Extra = @() },
-    @{ Name = "postgres-metastore"; Extra = @() },
-    @{ Name = "hive-metastore"; Extra = @() },
-    @{ Name = "jupyter"; Extra = @() },
+    @{ Name = "jupyter"; Extra = @(
+        "--set-string", "image.repository=$JupyterImageRepository",
+        "--set-string", "image.tag=$ImageTag"
+    ) },
     @{ Name = "airflow"; Extra = @(
         "--set-string", "image.repository=$AirflowImageRepository",
         "--set-string", "image.tag=$ImageTag",

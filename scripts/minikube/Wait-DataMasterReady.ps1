@@ -56,15 +56,31 @@ try {
     }
     $expectedChildren = @($childRender | Select-String -Pattern "^kind: Application$").Count
     $expectedApplications = $expectedChildren + 1
+    $optionalApplicationNames = @("jupyter-app")
 
-    Wait-DataMasterCondition -Description "$expectedApplications Argo CD Applications synced and healthy" -Deadline $deadline -Condition {
+    Wait-DataMasterCondition -Description "$expectedApplications Argo CD Applications present and required applications synced and healthy" -Deadline $deadline -Condition {
         $jsonText = (& kubectl get applications.argoproj.io -n argocd -o json 2>$null) -join ""
         if (-not $jsonText) { return $false }
         $applications = ($jsonText | ConvertFrom-Json).items
         if (@($applications).Count -ne $expectedApplications) { return $false }
         $notReady = @($applications | Where-Object {
-            ($_.status.sync.status -ne "Synced") -or
-            ($_.status.health.status -ne "Healthy")
+            $applicationName = [string]$_.metadata.name
+            if ($applicationName -in $optionalApplicationNames) {
+                return $false
+            }
+            $status = $_.PSObject.Properties["status"]
+            if ($null -eq $status) { return $true }
+            $sync = $status.Value.PSObject.Properties["sync"]
+            $health = $status.Value.PSObject.Properties["health"]
+            if (($null -eq $sync) -or ($null -eq $health)) { return $true }
+            $syncStatus = $sync.Value.PSObject.Properties["status"]
+            $healthStatus = $health.Value.PSObject.Properties["status"]
+            return (
+                ($null -eq $syncStatus) -or
+                ($null -eq $healthStatus) -or
+                ($syncStatus.Value -ne "Synced") -or
+                ($healthStatus.Value -ne "Healthy")
+            )
         })
         return $notReady.Count -eq 0
     }
@@ -74,7 +90,7 @@ try {
         return $LASTEXITCODE -eq 0
     }
 
-    $deployments = @("minio", "postgres-metastore", "hive-metastore", "airflow")
+    $deployments = @("minio", "airflow")
     foreach ($deployment in $deployments) {
         $remaining = [math]::Max(1, [int]($deadline - (Get-Date)).TotalSeconds)
         Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
@@ -98,7 +114,7 @@ try {
         )
     }
 
-    foreach ($service in @("minio", "postgres-metastore", "hive-metastore", "airflow")) {
+    foreach ($service in @("minio", "airflow")) {
         Invoke-DataMasterNative -FilePath "kubectl" -Arguments @(
             "get", "service", $service, "-n", "data-platform"
         ) | Out-Null
@@ -115,15 +131,56 @@ try {
         }
     }
 
+    $applicationJson = (& kubectl get applications.argoproj.io -n argocd -o json) -join ""
+    $applicationItems = @((ConvertFrom-Json $applicationJson).items)
+    $healthyApplications = @($applicationItems | Where-Object {
+        $itemStatus = $_.PSObject.Properties["status"]
+        if ($null -eq $itemStatus) { return $false }
+        $itemHealth = $itemStatus.Value.PSObject.Properties["health"]
+        if ($null -eq $itemHealth) { return $false }
+        $itemHealthStatus = $itemHealth.Value.PSObject.Properties["status"]
+        ($null -ne $itemHealthStatus) -and ($itemHealthStatus.Value -eq "Healthy")
+    }).Count
+    $syncedApplications = @($applicationItems | Where-Object {
+        $itemStatus = $_.PSObject.Properties["status"]
+        if ($null -eq $itemStatus) { return $false }
+        $itemSync = $itemStatus.Value.PSObject.Properties["sync"]
+        if ($null -eq $itemSync) { return $false }
+        $itemSyncStatus = $itemSync.Value.PSObject.Properties["status"]
+        ($null -ne $itemSyncStatus) -and ($itemSyncStatus.Value -eq "Synced")
+    }).Count
+    $jupyterApplication = @($applicationItems | Where-Object {
+        $_.metadata.name -eq "jupyter-app"
+    })
+    $jupyterApplicationStatus = "OPTIONAL_NOT_READY"
+    if ($jupyterApplication.Count -eq 1) {
+        $jupyterStatus = $jupyterApplication[0].PSObject.Properties["status"]
+        if ($null -ne $jupyterStatus) {
+            $jupyterSync = $jupyterStatus.Value.PSObject.Properties["sync"]
+            $jupyterHealth = $jupyterStatus.Value.PSObject.Properties["health"]
+            if ($null -ne $jupyterSync -and $null -ne $jupyterHealth) {
+                $jupyterSyncStatus = $jupyterSync.Value.PSObject.Properties["status"]
+                $jupyterHealthStatus = $jupyterHealth.Value.PSObject.Properties["status"]
+                if (
+                    $null -ne $jupyterSyncStatus -and
+                    $null -ne $jupyterHealthStatus -and
+                    $jupyterSyncStatus.Value -eq "Synced" -and
+                    $jupyterHealthStatus.Value -eq "Healthy"
+                ) {
+                    $jupyterApplicationStatus = "READY"
+                }
+            }
+        }
+    }
+
     Write-Output "EXPECTED_APPLICATIONS=$expectedApplications"
-    Write-Output "HEALTHY_APPLICATIONS=$expectedApplications"
-    Write-Output "SYNCED_APPLICATIONS=$expectedApplications"
+    Write-Output "HEALTHY_APPLICATIONS=$healthyApplications"
+    Write-Output "SYNCED_APPLICATIONS=$syncedApplications"
+    Write-Output "JUPYTER_APPLICATION_STATUS=$jupyterApplicationStatus"
     Write-Output "ARGOCD_APPLICATIONS_STATUS=PASS"
     Write-Output "SPARK_OPERATOR_STATUS=PASS"
     Write-Output "SPARK_CRDS_STATUS=PASS"
     Write-Output "MINIO_STATUS=PASS"
-    Write-Output "POSTGRES_METASTORE_STATUS=PASS"
-    Write-Output "HIVE_METASTORE_STATUS=PASS"
     Write-Output "AIRFLOW_STATUS=PASS"
     Write-Output "DATA_MASTER_READY_STATUS=PASS"
 }

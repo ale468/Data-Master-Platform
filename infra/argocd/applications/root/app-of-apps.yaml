@@ -25,6 +25,10 @@ spec:
           value: __SPARK_IMAGE_REPOSITORY__
         - name: images.spark.tag
           value: __IMAGE_TAG__
+        - name: images.jupyter.repository
+          value: __JUPYTER_IMAGE_REPOSITORY__
+        - name: images.jupyter.tag
+          value: __IMAGE_TAG__
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

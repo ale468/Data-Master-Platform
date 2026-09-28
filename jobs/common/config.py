@@ -35,6 +35,10 @@ class PipelineConfig:
     LAKEHOUSE_ROOT = os.getenv("LAKEHOUSE_ROOT", f"s3a://{LAKEHOUSE_BUCKET}")
     
     BRONZE_PATH = os.getenv("BRONZE_PATH", f"{LAKEHOUSE_ROOT}/bronze")
+    BRONZE_BATCH_MANIFEST_PATH = os.getenv(
+        "BRONZE_BATCH_MANIFEST_PATH",
+        f"{BRONZE_PATH}/_control/batch_manifest",
+    )
     RAW_VAULT_PATH = os.getenv("RAW_VAULT_PATH", f"{LAKEHOUSE_ROOT}/raw_vault")
     BUSINESS_VAULT_PATH = os.getenv("BUSINESS_VAULT_PATH", f"{LAKEHOUSE_ROOT}/business_vault")
     GOLD_PATH = os.getenv("GOLD_PATH", f"{LAKEHOUSE_ROOT}/gold")

@@ -24,10 +24,14 @@ spec:
       - name: jupyter
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        ports:
-        - name: http
-          containerPort: 8888
-          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
         env:
         - name: JUPYTER_TOKEN
           valueFrom:
@@ -37,19 +41,19 @@ spec:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
-              name: data-master-minio-secret
+              name: {{ .Values.jupyter.minioSecretName }}
               key: MINIO_ACCESS_KEY
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: data-master-minio-secret
+              name: {{ .Values.jupyter.minioSecretName }}
               key: MINIO_SECRET_KEY
         - name: JUPYTER_BASE_URL
           value: {{ .Values.jupyter.baseUrl | quote }}
         - name: PYSPARK_SUBMIT_ARGS
           value: {{ .Values.sparkSubmitArgs | quote }}
         - name: SPARK_HOME
-          value: "/usr/local/spark"
+          value: "/opt/spark"
         {{- range .Values.env }}
         - name: {{ .name }}
           value: {{ .value | quote }}
@@ -59,14 +63,12 @@ spec:
           containerPort: 8888
           protocol: TCP
         livenessProbe:
-          httpGet:
-            path: /api
+          tcpSocket:
             port: http
           initialDelaySeconds: 30
           periodSeconds: 30
         readinessProbe:
-          httpGet:
-            path: /api
+          tcpSocket:
             port: http
           initialDelaySeconds: 5
           periodSeconds: 10
