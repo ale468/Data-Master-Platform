@@ -1,0 +1,119 @@
+# Copyright (C) 2026 Alexandre Ferreira
+# SPDX-License-Identifier: AGPL-3.0-only
+
+schema_version: 1
+policy_id: data-master-delta-physical-design-v1
+current_decision: KEEP_UNPARTITIONED
+scope: local_synthetic_demo
+
+boundaries:
+  table_partitioning: Physical directory layout chosen when a Delta table is written.
+  execution_partitioning: Spark shuffle, DataFrame and Delta snapshot parallelism; it does not change table layout.
+  catalog_metadata: Logical naming and discovery; it does not choose or optimize physical layout.
+  automatic_maintenance_authorized: false
+  destructive_vacuum_authorized: false
+
+decision_states:
+  KEEP_UNPARTITIONED:
+    next: [OBSERVE]
+    evidence: Current workload does not justify physical partitioning.
+  OBSERVE:
+    next: [KEEP_UNPARTITIONED, EXPERIMENT]
+    evidence: File health and representative query families are measured across runs.
+  EXPERIMENT:
+    next: [KEEP_UNPARTITIONED, OBSERVE, ADOPT]
+    evidence: Equivalent repeated workloads compare layout candidates with functional fingerprints.
+  ADOPT:
+    next: [OBSERVE]
+    evidence: A separately reviewed decision records material benefit, compatibility, recovery and rollback.
+
+file_health_contract:
+  version: 1
+  small_file_threshold_bytes: 16777216
+  required_metrics: [active_file_count, active_bytes, min_file_bytes, median_file_bytes, p95_file_bytes, max_file_bytes, small_file_count, small_file_ratio, physical_partition_count, delta_version]
+  optional_metrics: [growth_active_bytes, files_scanned, bytes_scanned, scan_amplification_ratio]
+  privacy_classification: technical_aggregate_only
+  claim_limits:
+    - A threshold or row count alone cannot promote a layout.
+    - Missing workload or equivalence evidence produces NO_CHANGE or INCONCLUSIVE.
+    - Metrics from the local synthetic demo do not establish production scale, SLA or cost savings.
+
+maintenance:
+  compaction:
+    authorized: false
+    trigger: reviewed_experiment_only
+    required_evidence: [small_file_pressure, representative_workload, functional_equivalence]
+  vacuum:
+    authorized: false
+    minimum_retention_hours: 168
+    requires: [separate_authorization, recovery_check, evidence_preservation_check]
+  failure_mode: fail_closed
+
+table_family_defaults:
+  bronze:
+    current_layout: UNPARTITIONED
+    expected_growth: bounded_local_demo
+    dominant_access_patterns: [batch_replay, full_table_validation]
+    risks: [small_files_from_frequent_batches, over_partitioning]
+  raw_vault:
+    current_layout: UNPARTITIONED
+    expected_growth: bounded_local_demo
+    dominant_access_patterns: [business_key_lookup, latest_satellite_state, lineage_join]
+    risks: [high_cardinality_hash_keys, skew, small_files]
+  gold:
+    current_layout: UNPARTITIONED
+    expected_growth: bounded_local_demo
+    dominant_access_patterns: [full_rebuild, aggregate_read]
+    risks: [small_outputs, over_partitioning]
+
+physical_tables:
+  # Bronze is insert-only by batch plus source primary key.
+  - {id: bronze.clientes, layer: bronze, name: clientes, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: bronze.contas, layer: bronze, name: contas, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: bronze.transacoes, layer: bronze, name: transacoes, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [data_transacao], disposition: OBSERVE}
+  - {id: bronze.cartoes, layer: bronze, name: cartoes, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: bronze.eventos_digitais, layer: bronze, name: eventos_digitais, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [timestamp], disposition: OBSERVE}
+  - {id: bronze.agencias, layer: bronze, name: agencias, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: bronze.produtos, layer: bronze, name: produtos, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+
+  # Raw Vault hubs and links preserve the first occurrence; satellites append real state changes.
+  - {id: raw_vault.hub_cliente, layer: raw_vault, group: hub, name: hub_cliente, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.hub_conta, layer: raw_vault, group: hub, name: hub_conta, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.hub_cartao, layer: raw_vault, group: hub, name: hub_cartao, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.hub_transacao, layer: raw_vault, group: hub, name: hub_transacao, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.hub_agencia, layer: raw_vault, group: hub, name: hub_agencia, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.hub_produto, layer: raw_vault, group: hub, name: hub_produto, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.hub_canal_digital, layer: raw_vault, group: hub, name: hub_canal_digital, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_cliente_conta, layer: raw_vault, group: link, name: link_cliente_conta, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_conta_transacao, layer: raw_vault, group: link, name: link_conta_transacao, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_cliente_cartao, layer: raw_vault, group: link, name: link_cliente_cartao, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_cartao_transacao, layer: raw_vault, group: link, name: link_cartao_transacao, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_conta_agencia, layer: raw_vault, group: link, name: link_conta_agencia, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_conta_produto, layer: raw_vault, group: link, name: link_conta_produto, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.link_cliente_evento_digital, layer: raw_vault, group: link, name: link_cliente_evento_digital, write_mode: INSERT_ONLY, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_cliente_dados_cadastrais, layer: raw_vault, group: satellite, name: sat_cliente_dados_cadastrais, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_cliente_documentos, layer: raw_vault, group: satellite, name: sat_cliente_documentos, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_conta_detalhes, layer: raw_vault, group: satellite, name: sat_conta_detalhes, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_cartao_detalhes, layer: raw_vault, group: satellite, name: sat_cartao_detalhes, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_transacao_detalhes, layer: raw_vault, group: satellite, name: sat_transacao_detalhes, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [data_transacao], disposition: OBSERVE}
+  - {id: raw_vault.sat_agencia_detalhes, layer: raw_vault, group: satellite, name: sat_agencia_detalhes, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_produto_detalhes, layer: raw_vault, group: satellite, name: sat_produto_detalhes, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: raw_vault.sat_evento_digital_detalhes, layer: raw_vault, group: satellite, name: sat_evento_digital_detalhes, write_mode: APPEND_HISTORIZED, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+
+  # Gold tables are rebuilt from accumulated Raw Vault state.
+  - {id: gold.gold_transacoes_por_dia, layer: gold, name: gold_transacoes_por_dia, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [data], disposition: OBSERVE}
+  - {id: gold.gold_transacoes_por_cliente, layer: gold, name: gold_transacoes_por_cliente, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: gold.gold_volume_por_produto, layer: gold, name: gold_volume_por_produto, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: gold.gold_eventos_digitais_por_canal, layer: gold, name: gold_eventos_digitais_por_canal, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: gold.gold_contas_por_agencia, layer: gold, name: gold_contas_por_agencia, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: gold.gold_risco_transacional_simplificado, layer: gold, name: gold_risco_transacional_simplificado, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+  - {id: gold.gold_clientes_protegidos, layer: gold, name: gold_clientes_protegidos, write_mode: REBUILD_OVERWRITE, partition_columns: [], candidate_layout_keys: [], disposition: KEEP_UNPARTITIONED}
+
+technical_tables:
+  - {id: bronze._control.batch_manifest, owner: BRONZE_BATCH_MANIFEST_PATH, current_layout: UNPARTITIONED, maintenance_authorized: false}
+  - {id: monitoring.pipeline_execution_log, owner: MONITORING_TABLE, current_layout: UNPARTITIONED, maintenance_authorized: false}
+
+logical_business_vault_views:
+  materialized: false
+  implementation: jobs/business_vault/load_gold.py::RawBusinessViews
+  names: [customers, accounts, cards, transactions, agencies]
