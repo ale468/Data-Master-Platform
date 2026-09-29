@@ -327,3 +327,32 @@ jobs:
           spark.stop()
           print("JUPYTER_DELTA_LOCAL_SMOKE_STATUS=SUCCESS")
           '
+  powershell-image-wrapper-quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build and validate images through the PowerShell wrapper
+        shell: pwsh
+        run: |
+          $tag = "git-${{ github.sha }}"
+          $output = @(& ./scripts/minikube/Build-DataMasterImages.ps1 -Tag $tag 2>&1)
+          if ($LASTEXITCODE -ne 0) {
+            throw "Build-DataMasterImages.ps1 failed with exit code $LASTEXITCODE.`n$($output -join [Environment]::NewLine)"
+          }
+          foreach ($marker in @(
+            "AIRFLOW_IMAGE_ROLE=ORCHESTRATION_ONLY",
+            "SPARK_IMAGE_ROLE=PROCESSING",
+            "JUPYTER_IMAGE_ROLE=PRESENTATION_READ_ONLY",
+            "JUPYTER_IMAGE_CONTAINS_NOTEBOOK=YES",
+            "IMAGE_BUILD_STATUS=PASS"
+          )) {
+            if (-not ($output -contains $marker)) {
+              throw "Missing build validation marker: $marker"
+            }
+          }
