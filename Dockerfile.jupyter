@@ -25,7 +25,14 @@ LABEL org.opencontainers.image.title="Data Master Jupyter" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       io.data-master.image-role="presentation-read-only"
 
+# The MinIO identity remains read-only, but the notebook workspace must be
+# writable by the non-root Jupyter process so users can upload and save .ipynb
+# files during a presentation.
+RUN chown -R 65534:65534 "${JUPYTER_ROOT_DIR}" \
+    && chmod -R u+rwX,go-rwx "${JUPYTER_ROOT_DIR}"
+
 USER 65534:65534
+RUN test -w "${JUPYTER_ROOT_DIR}"
 WORKDIR /opt/spark/work-dir/jobs/presentation/notebooks
 
 EXPOSE 8888
