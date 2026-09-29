@@ -67,9 +67,17 @@ $sparkRole = Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Argument
 if (($sparkRole -join "`n") -notmatch "PROCESSING") {
     throw "Spark image role or jobs payload is invalid."
 }
+$jupyterValidationCommand = @(
+    'test -f /opt/spark/work-dir/jobs/presentation/notebooks/data_master_delta_presentation.ipynb'
+    # These are Bash quotes, not PowerShell escape sequences. Keeping the
+    # Python payload single-quoted avoids leaking backslashes through the
+    # PowerShell -> Docker -> Bash native-process boundary.
+    'python3 -c ''import delta, jupyterlab, pyspark'''
+    'printf ''%s'' "$JUPYTER_IMAGE_ROLE"'
+) -join ' && '
 $jupyterRole = Invoke-DataMasterNative -FilePath "docker" -CaptureOutput -Arguments @(
     "run", "--rm", "--entrypoint", "bash", $jupyterImage, "-ec",
-    'test -f /opt/spark/work-dir/jobs/presentation/notebooks/data_master_delta_presentation.ipynb && python3 -c "import delta, jupyterlab, pyspark" && printf ''%s'' "$JUPYTER_IMAGE_ROLE"'
+    $jupyterValidationCommand
 )
 if (($jupyterRole -join "`n") -notmatch "PRESENTATION_READ_ONLY") {
     throw "Jupyter image role, notebook, or runtime packages are invalid."

@@ -64,6 +64,32 @@ class MinikubeReproducibilityContractTests(unittest.TestCase):
         )
         self.assertIn("ConfirmDeletion", remove)
 
+    def test_jupyter_build_validation_uses_shell_safe_python_payload(self):
+        build = (SCRIPTS / "Build-DataMasterImages.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("$jupyterValidationCommand = @(\n", build)
+        self.assertIn(
+            "python3 -c ''import delta, jupyterlab, pyspark''", build
+        )
+        self.assertNotIn(
+            'python3 -c "import delta, jupyterlab, pyspark"', build
+        )
+        self.assertIn(
+            '"run", "--rm", "--entrypoint", "bash", $jupyterImage, "-ec",',
+            build,
+        )
+        self.assertIn("$jupyterValidationCommand\n)", build)
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("powershell-image-wrapper-quality-gates:", workflow)
+        self.assertIn(
+            "Build and validate images through the PowerShell wrapper", workflow
+        )
+        self.assertIn("shell: pwsh", workflow)
+        self.assertIn("Build-DataMasterImages.ps1 -Tag $tag", workflow)
+
     def test_gitops_root_and_children_share_explicit_revision(self):
         root = (
             REPO_ROOT
